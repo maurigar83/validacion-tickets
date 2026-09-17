@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-
   <meta charset="UTF-8">
 
   <meta
@@ -10,7 +8,7 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>Validador de Tickets</title>
+  <title>Validación de Tickets</title>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -22,284 +20,179 @@
 
     body {
       margin: 0;
-      padding: 20px;
       min-height: 100vh;
-
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        Arial,
-        sans-serif;
-
-      background: #f4f6f8;
-      color: #172b1d;
-
+      background: #f5f5f5;
+      font-family: Arial, Helvetica, sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
+      padding: 20px;
     }
 
     .contenedor {
       width: 100%;
       max-width: 520px;
-
       background: white;
-
-      border-radius: 22px;
-
-      padding: 28px 20px 24px;
-
-      box-shadow:
-        0 10px 35px rgba(0, 0, 0, 0.12);
-
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.12);
       text-align: center;
     }
 
     h1 {
       margin: 0 0 8px;
-
       font-size: 30px;
-      line-height: 1.1;
+      color: #172b1d;
     }
 
     .subtitulo {
-      margin: 0 0 22px;
-
-      color: #6b7280;
-
+      margin-bottom: 22px;
+      color: #666;
       font-size: 16px;
     }
 
     #reader {
       width: 100%;
-
-      max-width: 420px;
-
-      margin: 0 auto;
-
       overflow: hidden;
-
-      border-radius: 16px;
-    }
-
-    .botones {
-      margin-top: 20px;
-
-      display: flex;
-      flex-direction: column;
-
-      gap: 12px;
-    }
-
-    button {
-      width: 100%;
-
-      border: 0;
-
-      border-radius: 12px;
-
-      padding: 15px 18px;
-
-      font-size: 17px;
-
-      font-weight: 700;
-
-      cursor: pointer;
-    }
-
-    #iniciar {
-      background: #172b1d;
-      color: white;
-    }
-
-    #detener {
-      background: #e5e7eb;
-      color: #172b1d;
-
-      display: none;
-    }
-
-    #estado {
-      margin-top: 18px;
-
-      min-height: 24px;
-
-      font-size: 15px;
-
-      color: #6b7280;
-    }
-
-    .camera-selector {
-      margin-top: 15px;
-
-      display: none;
+      border-radius: 14px;
     }
 
     select {
       width: 100%;
-
-      padding: 12px;
-
+      padding: 13px;
+      margin: 15px 0;
+      border: 1px solid #ccc;
       border-radius: 10px;
-
-      border: 1px solid #d1d5db;
-
       background: white;
-
       font-size: 16px;
     }
 
-    .logo-texto {
-      margin-bottom: 20px;
-
-      font-size: 14px;
-
-      font-weight: 700;
-
-      letter-spacing: 1px;
-
-      color: #6b7280;
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: #172b1d;
+      color: white;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
     }
 
-    @media (max-width: 480px) {
+    button:disabled {
+      opacity: 0.5;
+    }
 
-      body {
-        padding: 12px;
-      }
+    .estado {
+      margin-top: 15px;
+      min-height: 24px;
+      font-size: 15px;
+      color: #555;
+    }
 
-      .contenedor {
-        padding: 24px 16px 20px;
-      }
-
-      h1 {
-        font-size: 27px;
-      }
-
+    .instrucciones {
+      margin-top: 20px;
+      padding: 14px;
+      background: #f1f5f2;
+      border-radius: 10px;
+      color: #555;
+      font-size: 14px;
+      line-height: 1.45;
     }
 
   </style>
-
 </head>
-
 
 <body>
 
-  <main class="contenedor">
+  <div class="contenedor">
 
-    <div class="logo-texto">
-      VALIDACIÓN DE TICKETS
+    <h1>VALIDACIÓN DE TICKETS</h1>
+
+    <div class="subtitulo">
+      Escanea el código QR del ticket
     </div>
 
-    <h1>
-      Escáner QR
-    </h1>
-
-    <p class="subtitulo">
-      Escanea el código QR del ticket para validar el ingreso.
-    </p>
-
+    <select id="camara">
+      <option value="">Seleccionando cámara...</option>
+    </select>
 
     <div id="reader"></div>
 
-
-    <div class="camera-selector">
-
-      <select id="cameraSelect">
-
-        <option value="">
-          Selecciona una cámara
-        </option>
-
-      </select>
-
+    <div class="estado" id="estado">
+      Preparando lector...
     </div>
 
+    <button
+      id="boton"
+      onclick="iniciarLector()"
+    >
+      INICIAR CÁMARA
+    </button>
 
-    <div class="botones">
-
-      <button
-        id="iniciar"
-        onclick="iniciarScanner()"
-      >
-        ESCANEAR TICKET
-      </button>
-
-
-      <button
-        id="detener"
-        onclick="detenerScanner()"
-      >
-        DETENER CÁMARA
-      </button>
-
+    <div class="instrucciones">
+      Apunta la cámara directamente al código QR.
+      <br>
+      La validación se realizará automáticamente.
     </div>
 
-
-    <div id="estado">
-      Listo para escanear.
-    </div>
-
-  </main>
+  </div>
 
 
   <script>
 
     // =====================================================
-    // API DE APPS SCRIPT — V2.6
+    // CONFIGURACIÓN
     // =====================================================
 
     const API_URL =
-      "https://script.google.com/macros/s/AKfycbyxHCqVw6MQKsD6m_nVJXQwJWZqpQTSfpE5G9YnuOpE0MoaHXeeSu8sno9Fx-hY6EvBvg/exec";
+      "https://script.google.com/macros/s/AKfycbxLoj6vIDojpKXW1jrVTR05pjGRVTYei9rNH7ohgx8lY2meE9Kk94Wv2oa9Gqf_4-IyyA/exec";
 
 
-    // =====================================================
-    // CONFIGURACIÓN DEL LECTOR
-    // =====================================================
+    const html5QrCode =
+      new Html5Qrcode("reader");
 
-    let html5QrCode = null;
 
-    let camaras = [];
+    let camaraSeleccionada = null;
 
-    let scannerActivo = false;
+    let procesando = false;
 
-    let procesandoCodigo = false;
+    let lectorActivo = false;
 
 
     // =====================================================
     // ELEMENTOS
     // =====================================================
 
+    const selectorCamara =
+      document.getElementById("camara");
+
     const estado =
       document.getElementById("estado");
 
-    const iniciar =
-      document.getElementById("iniciar");
-
-    const detener =
-      document.getElementById("detener");
-
-    const cameraSelector =
-      document.querySelector(".camera-selector");
-
-    const cameraSelect =
-      document.getElementById("cameraSelect");
+    const boton =
+      document.getElementById("boton");
 
 
     // =====================================================
-    // LISTAR CÁMARAS
+    // CARGAR CÁMARAS
     // =====================================================
 
     async function cargarCamaras() {
 
       try {
 
-        camaras =
+        const camaras =
           await Html5Qrcode.getCameras();
 
 
+        selectorCamara.innerHTML = "";
+
+
         if (!camaras || camaras.length === 0) {
+
+          selectorCamara.innerHTML =
+            '<option value="">No se encontraron cámaras</option>';
 
           estado.textContent =
             "No se encontró ninguna cámara.";
@@ -309,32 +202,46 @@
         }
 
 
-        cameraSelect.innerHTML = "";
+        camaras.forEach((camara, indice) => {
+
+          const opcion =
+            document.createElement("option");
+
+          opcion.value =
+            camara.id;
+
+          opcion.textContent =
+            camara.label ||
+            `Cámara ${indice + 1}`;
+
+          selectorCamara.appendChild(opcion);
+
+        });
 
 
-        camaras.forEach(
-          (camera, indice) => {
+        // Preferir cámara trasera cuando el navegador
 
-            const option =
-              document.createElement("option");
+        // proporciona esa información.
 
-            option.value =
-              camera.id;
-
-            option.textContent =
-              camera.label ||
-              `Cámara ${indice + 1}`;
-
-            cameraSelect.appendChild(
-              option
-            );
-
-          }
-        );
+        const trasera =
+          camaras.find(camara =>
+            /back|rear|environment|trasera/i
+              .test(camara.label)
+          );
 
 
-        cameraSelector.style.display =
-          "block";
+        camaraSeleccionada =
+          trasera
+            ? trasera.id
+            : camaras[0].id;
+
+
+        selectorCamara.value =
+          camaraSeleccionada;
+
+
+        estado.textContent =
+          "Cámara lista para escanear.";
 
 
       } catch (error) {
@@ -350,54 +257,73 @@
 
 
     // =====================================================
-    // INICIAR SCANNER
+    // CAMBIO DE CÁMARA
     // =====================================================
 
-    async function iniciarScanner() {
+    selectorCamara.addEventListener(
+      "change",
+      async function () {
 
-      if (scannerActivo) {
+        camaraSeleccionada =
+          this.value;
+
+
+        if (lectorActivo) {
+
+          await detenerLector();
+
+          iniciarLector();
+
+        }
+
+      }
+    );
+
+
+    // =====================================================
+    // INICIAR LECTOR
+    // =====================================================
+
+    async function iniciarLector() {
+
+      if (lectorActivo) {
         return;
       }
 
 
-      procesandoCodigo = false;
+      if (!camaraSeleccionada) {
+
+        estado.textContent =
+          "Selecciona una cámara.";
+
+        return;
+
+      }
+
+
+      procesando = false;
+
+      lectorActivo = true;
+
+
+      boton.disabled = true;
+
+      boton.textContent =
+        "CÁMARA ACTIVA";
 
 
       estado.textContent =
-        "Iniciando cámara...";
+        "Apunta al código QR...";
 
 
       try {
 
-        await cargarCamaras();
-
-
-        if (!camaras || camaras.length === 0) {
-          return;
-        }
-
-
-        let cameraId =
-          cameraSelect.value;
-
-
-        if (!cameraId) {
-
-          cameraId =
-            camaras[0].id;
-
-        }
-
-
-        html5QrCode =
-          new Html5Qrcode("reader");
-
-
         await html5QrCode.start(
 
-          cameraId,
+          camaraSeleccionada,
 
           {
+
             fps: 10,
 
             qrbox: {
@@ -409,91 +335,26 @@
 
           onScanSuccess,
 
-          onScanFailure
+          onScanError
 
         );
 
 
-        scannerActivo = true;
-
-
-        iniciar.style.display =
-          "none";
-
-        detener.style.display =
-          "block";
-
-
-        estado.textContent =
-          "Escanea el código QR del ticket.";
-
-
       } catch (error) {
 
         console.error(error);
 
-        scannerActivo = false;
+        lectorActivo = false;
+
+        boton.disabled = false;
+
+        boton.textContent =
+          "INICIAR CÁMARA";
 
         estado.textContent =
           "No fue posible iniciar la cámara.";
 
-        iniciar.style.display =
-          "block";
-
-        detener.style.display =
-          "none";
-
       }
-
-    }
-
-
-    // =====================================================
-    // DETENER SCANNER
-    // =====================================================
-
-    async function detenerScanner() {
-
-      if (!html5QrCode) {
-        return;
-      }
-
-
-      try {
-
-        if (scannerActivo) {
-
-          await html5QrCode.stop();
-
-        }
-
-
-        await html5QrCode.clear();
-
-
-      } catch (error) {
-
-        console.error(error);
-
-      }
-
-
-      html5QrCode = null;
-
-      scannerActivo = false;
-
-      procesandoCodigo = false;
-
-
-      iniciar.style.display =
-        "block";
-
-      detener.style.display =
-        "none";
-
-
-      estado.textContent =
-        "Cámara detenida.";
 
     }
 
@@ -502,43 +363,38 @@
     // LECTURA EXITOSA
     // =====================================================
 
-    function onScanSuccess(decodedText) {
+    async function onScanSuccess(decodedText) {
 
-      if (procesandoCodigo) {
+      // Evitar que el mismo QR sea procesado varias
+
+      // veces mientras la cámara continúa detectándolo.
+
+      if (procesando) {
         return;
       }
 
 
-      procesandoCodigo = true;
+      procesando = true;
 
 
       estado.textContent =
-        "Ticket detectado. Validando...";
+        "Ticket detectado — validando ticket...";
 
 
-      // ---------------------------------------------------
-      // DETENER CÁMARA
-      // ---------------------------------------------------
+      try {
 
-      if (html5QrCode && scannerActivo) {
+        await detenerLector();
 
-        html5QrCode
-          .stop()
-          .catch(error => {
+      } catch (error) {
 
-            console.error(error);
-
-          });
+        console.error(error);
 
       }
 
 
-      scannerActivo = false;
-
-
-      // ---------------------------------------------------
-      // ENVIAR CÓDIGO A APPS SCRIPT
-      // ---------------------------------------------------
+      // =================================================
+      // ENVIAR QR A GOOGLE APPS SCRIPT
+      // =================================================
 
       const url =
         API_URL +
@@ -553,64 +409,79 @@
 
 
     // =====================================================
-    // LECTURA FALLIDA
+    // ERROR NORMAL DE ESCANEO
     // =====================================================
 
-    function onScanFailure(error) {
+    function onScanError(errorMessage) {
 
-      // No hacemos nada.
+      // No mostrar errores normales de lectura.
 
-      // html5-qrcode llama esta función
-      // continuamente mientras busca un QR.
+      // html5-qrcode los genera constantemente mientras
+
+      // busca un código.
 
     }
 
 
     // =====================================================
-    // CAMBIO DE CÁMARA
+    // DETENER LECTOR
     // =====================================================
 
-    cameraSelect.addEventListener(
-      "change",
-      async function () {
+    async function detenerLector() {
 
-        if (!scannerActivo) {
-          return;
-        }
+      if (!lectorActivo) {
+        return;
+      }
 
 
-        await detenerScanner();
+      try {
 
-        await iniciarScanner();
+        await html5QrCode.stop();
+
+      } catch (error) {
+
+        console.error(error);
 
       }
-    );
+
+
+      lectorActivo = false;
+
+
+      boton.disabled = false;
+
+      boton.textContent =
+        "INICIAR CÁMARA";
+
+    }
 
 
     // =====================================================
-    // ACTIVAR LECTOR SI VIENE ?lector=1
+    // INICIO
     // =====================================================
 
-    const parametros =
-      new URLSearchParams(
-        window.location.search
-      );
+    cargarCamaras();
 
+
+    // Si se entra directamente con ?lector=1,
+
+    // preparar automáticamente el lector.
 
     if (
-      parametros.get("lector") === "1"
+      new URLSearchParams(
+        window.location.search
+      ).get("lector") === "1"
     ) {
 
-      // El lector se abre normalmente
-      // mediante el botón ESCANEAR TICKET.
+      setTimeout(() => {
 
-      estado.textContent =
-        "Listo para escanear.";
+        iniciarLector();
+
+      }, 500);
 
     }
 
   </script>
 
 </body>
-
 </html>
