@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Validación de Tickets</title>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      font-size: 26px;
+      margin-bottom: 25px;
+    }
+
+    button {
+      font-size: 18px;
+      padding: 14px 24px;
+      margin: 8px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #btnStart {
+      background: #198754;
+      color: white;
+    }
+
+    #btnStop {
+      background: #dc3545;
+      color: white;
+    }
+
+    #reader {
+      width: 100%;
+      max-width: 400px;
+      margin: 20px auto;
+      background: white;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    #mensaje {
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>VALIDACIÓN DE TICKETS</h1>
+
+  <button id="btnStart" onclick="iniciarEscaner()">
+    ESCANEAR TICKET
+  </button>
+
+  <button id="btnStop" onclick="detenerEscaner()">
+    DETENER CÁMARA
+  </button>
+
+  <div id="reader"></div>
+
+  <div id="mensaje">
+    Presiona el botón para activar la cámara.
+  </div>
+
+  <script>
+
+    const API_URL =
+      "https://script.google.com/macros/s/AKfycbwmGbm43reopjgDJwVfRiutIeBie9Rb2XQ40WYSnAj6x51JuHjwdqm84pp8u1UdBNjq-g/exec";
+
+    let scanner = null;
+
+    async function iniciarEscaner() {
+
+      const mensaje = document.getElementById("mensaje");
+
+      mensaje.innerText = "Solicitando acceso a la cámara...";
+
+      try {
+
+        // Primero solicitamos directamente el permiso de cámara.
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: {
+              ideal: "environment"
+            }
+          },
+          audio: false
+        });
+
+        // Cerramos este acceso temporal.
+        stream.getTracks().forEach(track => track.stop());
+
+        mensaje.innerText = "Inicializando cámara...";
+
+        scanner = new Html5Qrcode("reader");
+
+        const cameras = await Html5Qrcode.getCameras();
+
+        if (!cameras || cameras.length === 0) {
+          throw new Error("No se encontraron cámaras.");
+        }
+
+        let cameraId = cameras[0].id;
+
+        // Intentamos seleccionar la cámara trasera.
+        const camaraTrasera = cameras.find(camera =>
+          /back|rear|environment|trasera/i.test(camera.label)
+        );
+
+        if (camaraTrasera) {
+          cameraId = camaraTrasera.id;
+        }
+
+        await scanner.start(
+          cameraId,
+          {
+            fps: 10,
+            qrbox: {
+              width: 250,
+              height: 250
+            }
+          },
+
+          codigo => {
+
+            mensaje.innerText = "Ticket detectado. Validando...";
+
+            detenerEscaner();
+
+            const url =
+              API_URL +
+              "?codigo=" +
+              encodeURIComponent(codigo);
+
+            window.location.href = url;
+
+          },
+
+          errorMessage => {
+            // Errores normales mientras busca un QR.
+          }
+        );
+
+        mensaje.innerText = "Cámara activa. Escanea el código QR.";
+
+      } catch (error) {
+
+        console.error(error);
+
+        mensaje.innerText =
+          "No fue posible activar la cámara.";
+
+      }
+
+    }
+
+
+    async function detenerEscaner() {
+
+      try {
+
+        if (scanner) {
+
+          await scanner.stop();
+
+          scanner.clear();
+
+          scanner = null;
+
+        }
+
+      } catch (error) {
+
+        console.log(error);
+
+      }
+
+    }
+
+  </script>
+
+</body>
+</html>
