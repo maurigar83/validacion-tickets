@@ -57,6 +57,7 @@
 </head>
 
 <body>
+
   <h1>VALIDACIÓN DE TICKETS</h1>
 
   <button id="btnStart" onclick="iniciarEscaner()">
@@ -74,91 +75,213 @@
   </div>
 
   <script>
+
+    // =====================================================
+    // URL DE VALIDACIÓN — V2.1
+    // =====================================================
+
     const API_URL =
-      "https://script.google.com/macros/s/AKfycbw6bBDT40_IRYb2jzuqBORp50u7EXnqWONnEdLUP9-gNlgTeXJDkfBzn4RcVsILuS6ihA/exec";
+      "https://script.google.com/macros/s/AKfycbxb4r6jQvwoshtwBgNIcPsrVtjWnZXgFIwZ38LGsTrqMLU2qVeLONaCBHNLwfs2Tiu4Gw/exec";
+
 
     let scanner = null;
     let procesando = false;
 
+
+    // =====================================================
+    // INICIAR ESCÁNER
+    // =====================================================
+
     async function iniciarEscaner() {
-      const mensaje = document.getElementById("mensaje");
 
-      if (procesando) return;
+      const mensaje =
+        document.getElementById("mensaje");
 
-      mensaje.innerText = "Solicitando acceso a la cámara...";
+
+      if (procesando) {
+        return;
+      }
+
+
+      mensaje.innerText =
+        "Solicitando acceso a la cámara...";
+
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
-          audio: false
-        });
 
-        stream.getTracks().forEach(track => track.stop());
+        const stream =
+          await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: {
+                ideal: "environment"
+              }
+            },
+            audio: false
+          });
 
-        mensaje.innerText = "Inicializando cámara...";
-        scanner = new Html5Qrcode("reader");
 
-        const cameras = await Html5Qrcode.getCameras();
+        stream
+          .getTracks()
+          .forEach(track => track.stop());
 
-        if (!cameras || cameras.length === 0) {
-          throw new Error("No se encontraron cámaras.");
+
+        mensaje.innerText =
+          "Inicializando cámara...";
+
+
+        scanner =
+          new Html5Qrcode("reader");
+
+
+        const cameras =
+          await Html5Qrcode.getCameras();
+
+
+        if (
+          !cameras ||
+          cameras.length === 0
+        ) {
+
+          throw new Error(
+            "No se encontraron cámaras."
+          );
+
         }
 
-        let cameraId = cameras[0].id;
 
-        const camaraTrasera = cameras.find(camera =>
-          /back|rear|environment|trasera/i.test(camera.label)
-        );
+        // -------------------------------------------------
+        // SELECCIONAR CÁMARA TRASERA
+        // -------------------------------------------------
+
+        let cameraId =
+          cameras[0].id;
+
+
+        const camaraTrasera =
+          cameras.find(camera =>
+            /back|rear|environment|trasera/i
+              .test(camera.label)
+          );
+
 
         if (camaraTrasera) {
-          cameraId = camaraTrasera.id;
+
+          cameraId =
+            camaraTrasera.id;
+
         }
 
+
+        // -------------------------------------------------
+        // INICIAR CÁMARA
+        // -------------------------------------------------
+
         await scanner.start(
+
           cameraId,
+
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 }
+            qrbox: {
+              width: 250,
+              height: 250
+            }
           },
 
+
+          // ------------------------------------------------
+          // QR DETECTADO
+          // ------------------------------------------------
+
           codigo => {
-            if (procesando) return;
+
+            if (procesando) {
+              return;
+            }
+
 
             procesando = true;
-            mensaje.innerText = "Ticket detectado. Validando...";
+
+
+            mensaje.innerText =
+              "Ticket detectado. Validando...";
+
 
             const url =
               API_URL +
               "?codigo=" +
               encodeURIComponent(codigo);
 
-            window.top.location.href = url;
+
+            // ------------------------------------------------
+            // ENVIAR QR A V2.1
+            // ------------------------------------------------
+
+            window.top.location.href =
+              url;
+
           },
 
+
+          // ------------------------------------------------
+          // ERRORES NORMALES DE BÚSQUEDA
+          // ------------------------------------------------
+
           errorMessage => {
-            // Errores normales mientras busca un QR.
+
+            // No hacemos nada.
+            // Es normal mientras la cámara
+            // está buscando un código QR.
+
           }
+
         );
 
-        mensaje.innerText = "Cámara activa. Escanea el código QR.";
+
+        mensaje.innerText =
+          "Cámara activa. Escanea el código QR.";
+
 
       } catch (error) {
+
         console.error(error);
-        mensaje.innerText = "No fue posible activar la cámara.";
+
+
+        mensaje.innerText =
+          "No fue posible activar la cámara.";
+
       }
+
     }
+
+
+    // =====================================================
+    // DETENER ESCÁNER
+    // =====================================================
 
     async function detenerEscaner() {
+
       try {
+
         if (scanner) {
+
           await scanner.stop();
+
           scanner.clear();
+
           scanner = null;
+
         }
+
       } catch (error) {
+
         console.log(error);
+
       }
+
     }
+
   </script>
+
 </body>
 </html>
