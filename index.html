@@ -76,7 +76,6 @@
   </div>
 
   <script>
-
     const API_URL =
       "https://script.google.com/macros/s/AKfycbwmGbm43reopjgDJwVfRiutIeBie9Rb2XQ40WYSnAj6x51JuHjwdqm84pp8u1UdBNjq-g/exec";
 
@@ -84,30 +83,21 @@
     let procesando = false;
 
     async function iniciarEscaner() {
-
       const mensaje = document.getElementById("mensaje");
 
-      if (procesando) {
-        return;
-      }
+      if (procesando) return;
 
       mensaje.innerText = "Solicitando acceso a la cámara...";
 
       try {
-
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: {
-              ideal: "environment"
-            }
-          },
+          video: { facingMode: { ideal: "environment" } },
           audio: false
         });
 
         stream.getTracks().forEach(track => track.stop());
 
         mensaje.innerText = "Inicializando cámara...";
-
         scanner = new Html5Qrcode("reader");
 
         const cameras = await Html5Qrcode.getCameras();
@@ -130,37 +120,21 @@
           cameraId,
           {
             fps: 10,
-            qrbox: {
-              width: 250,
-              height: 250
-            }
+            qrbox: { width: 250, height: 250 }
           },
 
           codigo => {
-
-            if (procesando) {
-              return;
-            }
+            if (procesando) return;
 
             procesando = true;
-
             mensaje.innerText = "Ticket detectado. Validando...";
-
-            detenerEscaner();
 
             const url =
               API_URL +
               "?codigo=" +
               encodeURIComponent(codigo);
 
-            /*
-             * Abrimos directamente la URL de Apps Script.
-             * Esto evita la navegación interna que estaba
-             * provocando el error desde GitHub Pages.
-             */
-
             window.top.location.href = url;
-
           },
 
           errorMessage => {
@@ -168,43 +142,25 @@
           }
         );
 
-        mensaje.innerText =
-          "Cámara activa. Escanea el código QR.";
+        mensaje.innerText = "Cámara activa. Escanea el código QR.";
 
       } catch (error) {
-
         console.error(error);
-
-        mensaje.innerText =
-          "No fue posible activar la cámara.";
-
+        mensaje.innerText = "No fue posible activar la cámara.";
       }
-
     }
-
 
     async function detenerEscaner() {
-
       try {
-
         if (scanner) {
-
           await scanner.stop();
-
           scanner.clear();
-
           scanner = null;
-
         }
-
       } catch (error) {
-
         console.log(error);
-
       }
-
     }
-
   </script>
 
 </body>
