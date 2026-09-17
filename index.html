@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Validación de Tickets</title>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
@@ -75,28 +76,60 @@
   </div>
 
   <script>
+
+    // =====================================================
+    // API V2.2
+    // =====================================================
+
     const API_URL =
-      "https://script.google.com/macros/s/AKfycbxAVR4n0GaFkMTNK-bvz72jzhP2BN8HuuJA3J5g58XF0YHG_PIvMcvTJ_ytVl4gq5zgdg/exec";
+      "https://script.google.com/macros/s/AKfycbyEXEtjQF9YCN7MJjE36qYVo5V9QWviqqatStAjcaEiEReZBFjwwn4wyaBcCnUe9CLC7w/exec";
+
+
+    // =====================================================
+    // VARIABLES
+    // =====================================================
 
     let scanner = null;
     let procesando = false;
 
     let audioContext = null;
 
+
+    // =====================================================
+    // BEEP
+    // =====================================================
+
     function hacerBeep() {
+
       try {
+
         if (!audioContext) {
-          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+          audioContext =
+            new (
+              window.AudioContext ||
+              window.webkitAudioContext
+            )();
+
         }
 
-        if (audioContext.state === "suspended") {
+        if (
+          audioContext.state ===
+          "suspended"
+        ) {
+
           audioContext.resume();
+
         }
 
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+        const oscillator =
+          audioContext.createOscillator();
+
+        const gainNode =
+          audioContext.createGain();
 
         oscillator.type = "sine";
+
         oscillator.frequency.value = 880;
 
         gainNode.gain.setValueAtTime(
@@ -115,98 +148,200 @@
         );
 
         oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+
+        gainNode.connect(
+          audioContext.destination
+        );
 
         oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.12);
+
+        oscillator.stop(
+          audioContext.currentTime + 0.12
+        );
 
       } catch (error) {
-        console.log("No se pudo reproducir el sonido:", error);
+
+        console.log(
+          "No se pudo reproducir el sonido:",
+          error
+        );
+
       }
+
     }
 
+
+    // =====================================================
+    // INICIAR ESCÁNER
+    // =====================================================
+
     async function iniciarEscaner() {
-      const mensaje = document.getElementById("mensaje");
+
+      const mensaje =
+        document.getElementById("mensaje");
 
       if (procesando) return;
 
-      mensaje.innerText = "Solicitando acceso a la cámara...";
+      mensaje.innerText =
+        "Solicitando acceso a la cámara...";
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
-          audio: false
-        });
 
-        stream.getTracks().forEach(track => track.stop());
+        const stream =
+          await navigator.mediaDevices.getUserMedia({
 
-        mensaje.innerText = "Inicializando cámara...";
-        scanner = new Html5Qrcode("reader");
+            video: {
+              facingMode: {
+                ideal: "environment"
+              }
+            },
 
-        const cameras = await Html5Qrcode.getCameras();
+            audio: false
 
-        if (!cameras || cameras.length === 0) {
-          throw new Error("No se encontraron cámaras.");
+          });
+
+
+        stream
+          .getTracks()
+          .forEach(track => track.stop());
+
+
+        mensaje.innerText =
+          "Inicializando cámara...";
+
+
+        scanner =
+          new Html5Qrcode("reader");
+
+
+        const cameras =
+          await Html5Qrcode.getCameras();
+
+
+        if (
+          !cameras ||
+          cameras.length === 0
+        ) {
+
+          throw new Error(
+            "No se encontraron cámaras."
+          );
+
         }
 
-        let cameraId = cameras[0].id;
 
-        const camaraTrasera = cameras.find(camera =>
-          /back|rear|environment|trasera/i.test(camera.label)
-        );
+        let cameraId =
+          cameras[0].id;
+
+
+        const camaraTrasera =
+          cameras.find(camera =>
+            /back|rear|environment|trasera/i
+              .test(camera.label)
+          );
+
 
         if (camaraTrasera) {
-          cameraId = camaraTrasera.id;
+
+          cameraId =
+            camaraTrasera.id;
+
         }
 
+
         await scanner.start(
+
           cameraId,
+
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 }
+
+            qrbox: {
+              width: 250,
+              height: 250
+            }
           },
 
+
           codigo => {
+
             if (procesando) return;
 
             procesando = true;
 
+
+            // UN SOLO BEEP
             hacerBeep();
 
-            mensaje.innerText = "Ticket detectado. Validando...";
+
+            mensaje.innerText =
+              "Ticket detectado. Validando...";
+
 
             const url =
               API_URL +
               "?codigo=" +
               encodeURIComponent(codigo);
 
-            window.top.location.href = url;
+
+            window.top.location.href =
+              url;
+
           },
 
+
           errorMessage => {
-            // Errores normales mientras busca un QR.
+
+            // Errores normales
+            // mientras busca un QR.
+
           }
+
         );
 
-        mensaje.innerText = "Cámara activa. Escanea el código QR.";
+
+        mensaje.innerText =
+          "Cámara activa. Escanea el código QR.";
+
 
       } catch (error) {
+
         console.error(error);
-        mensaje.innerText = "No fue posible activar la cámara.";
+
+        mensaje.innerText =
+          "No fue posible activar la cámara.";
+
       }
+
     }
+
+
+    // =====================================================
+    // DETENER ESCÁNER
+    // =====================================================
 
     async function detenerEscaner() {
+
       try {
+
         if (scanner) {
+
           await scanner.stop();
+
           scanner.clear();
+
           scanner = null;
+
         }
+
       } catch (error) {
+
         console.log(error);
+
       }
+
     }
+
   </script>
 
 </body>
