@@ -81,16 +81,20 @@
       "https://script.google.com/macros/s/AKfycbwmGbm43reopjgDJwVfRiutIeBie9Rb2XQ40WYSnAj6x51JuHjwdqm84pp8u1UdBNjq-g/exec";
 
     let scanner = null;
+    let procesando = false;
 
     async function iniciarEscaner() {
 
       const mensaje = document.getElementById("mensaje");
 
+      if (procesando) {
+        return;
+      }
+
       mensaje.innerText = "Solicitando acceso a la cámara...";
 
       try {
 
-        // Primero solicitamos directamente el permiso de cámara.
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: {
@@ -100,7 +104,6 @@
           audio: false
         });
 
-        // Cerramos este acceso temporal.
         stream.getTracks().forEach(track => track.stop());
 
         mensaje.innerText = "Inicializando cámara...";
@@ -115,7 +118,6 @@
 
         let cameraId = cameras[0].id;
 
-        // Intentamos seleccionar la cámara trasera.
         const camaraTrasera = cameras.find(camera =>
           /back|rear|environment|trasera/i.test(camera.label)
         );
@@ -136,6 +138,12 @@
 
           codigo => {
 
+            if (procesando) {
+              return;
+            }
+
+            procesando = true;
+
             mensaje.innerText = "Ticket detectado. Validando...";
 
             detenerEscaner();
@@ -145,7 +153,13 @@
               "?codigo=" +
               encodeURIComponent(codigo);
 
-            window.location.href = url;
+            /*
+             * Abrimos directamente la URL de Apps Script.
+             * Esto evita la navegación interna que estaba
+             * provocando el error desde GitHub Pages.
+             */
+
+            window.top.location.href = url;
 
           },
 
@@ -154,7 +168,8 @@
           }
         );
 
-        mensaje.innerText = "Cámara activa. Escanea el código QR.";
+        mensaje.innerText =
+          "Cámara activa. Escanea el código QR.";
 
       } catch (error) {
 
