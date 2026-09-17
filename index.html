@@ -1,90 +1,153 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
   <title>Validación de Tickets</title>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
+
     body {
+
       font-family: Arial, sans-serif;
+
       text-align: center;
+
       padding: 20px;
+
       background: #f5f5f5;
+
     }
+
 
     h1 {
+
       font-size: 26px;
+
       margin-bottom: 25px;
+
     }
+
 
     button {
+
       font-size: 18px;
+
       padding: 14px 24px;
+
       margin: 8px;
+
       border: none;
+
       border-radius: 8px;
+
       cursor: pointer;
+
     }
+
 
     #btnStart {
+
       background: #198754;
+
       color: white;
+
     }
+
 
     #btnStop {
+
       background: #dc3545;
+
       color: white;
+
     }
+
 
     #reader {
+
       width: 100%;
+
       max-width: 400px;
+
       margin: 20px auto;
+
       background: white;
+
       border-radius: 10px;
+
       padding: 10px;
+
     }
 
+
     #mensaje {
+
       font-size: 20px;
+
       font-weight: bold;
+
       margin-top: 20px;
+
     }
+
   </style>
+
 </head>
+
 
 <body>
 
+
   <h1>VALIDACIÓN DE TICKETS</h1>
 
-  <button id="btnStart" onclick="iniciarEscaner()">
+
+  <button
+    id="btnStart"
+    onclick="iniciarEscaner()"
+  >
     ESCANEAR TICKET
   </button>
 
-  <button id="btnStop" onclick="detenerEscaner()">
+
+  <button
+    id="btnStop"
+    onclick="detenerEscaner()"
+  >
     DETENER CÁMARA
   </button>
 
+
   <div id="reader"></div>
+
 
   <div id="mensaje">
     Presiona el botón para activar la cámara.
   </div>
 
+
   <script>
 
+
     // =====================================================
-    // URL DE VALIDACIÓN — V2.1
+    // URL DE VALIDACIÓN — V2.3
     // =====================================================
 
     const API_URL =
-      "https://script.google.com/macros/s/AKfycbxb4r6jQvwoshtwBgNIcPsrVtjWnZXgFIwZ38LGsTrqMLU2qVeLONaCBHNLwfs2Tiu4Gw/exec";
+      "https://script.google.com/macros/s/AKfycbzwp4pg_zBwPVz8UE6qa6l6D4HaYEBCPPoznRO1pNRlC3RzVD5M24H_Ph6mMt2dY3Ja0w/exec";
 
 
     let scanner = null;
+
     let procesando = false;
 
 
@@ -94,12 +157,15 @@
 
     async function iniciarEscaner() {
 
+
       const mensaje =
         document.getElementById("mensaje");
 
 
       if (procesando) {
+
         return;
+
       }
 
 
@@ -109,20 +175,32 @@
 
       try {
 
+
         const stream =
           await navigator.mediaDevices.getUserMedia({
+
             video: {
+
               facingMode: {
+
                 ideal: "environment"
+
               }
+
             },
+
             audio: false
+
           });
 
 
         stream
+
           .getTracks()
-          .forEach(track => track.stop());
+
+          .forEach(track =>
+            track.stop()
+          );
 
 
         mensaje.innerText =
@@ -153,14 +231,17 @@
         // SELECCIONAR CÁMARA TRASERA
         // -------------------------------------------------
 
+
         let cameraId =
           cameras[0].id;
 
 
         const camaraTrasera =
           cameras.find(camera =>
+
             /back|rear|environment|trasera/i
               .test(camera.label)
+
           );
 
 
@@ -176,16 +257,23 @@
         // INICIAR CÁMARA
         // -------------------------------------------------
 
+
         await scanner.start(
 
           cameraId,
 
           {
+
             fps: 10,
+
             qrbox: {
+
               width: 250,
+
               height: 250
+
             }
+
           },
 
 
@@ -193,10 +281,14 @@
           // QR DETECTADO
           // ------------------------------------------------
 
+
           codigo => {
 
+
             if (procesando) {
+
               return;
+
             }
 
 
@@ -214,8 +306,9 @@
 
 
             // ------------------------------------------------
-            // ENVIAR QR A V2.1
+            // ENVIAR QR A V2.3
             // ------------------------------------------------
+
 
             window.top.location.href =
               url;
@@ -226,6 +319,7 @@
           // ------------------------------------------------
           // ERRORES NORMALES DE BÚSQUEDA
           // ------------------------------------------------
+
 
           errorMessage => {
 
@@ -244,6 +338,7 @@
 
       } catch (error) {
 
+
         console.error(error);
 
 
@@ -261,19 +356,26 @@
 
     async function detenerEscaner() {
 
+
       try {
+
 
         if (scanner) {
 
+
           await scanner.stop();
 
+
           scanner.clear();
+
 
           scanner = null;
 
         }
 
+
       } catch (error) {
+
 
         console.log(error);
 
@@ -281,7 +383,10 @@
 
     }
 
+
   </script>
 
+
 </body>
+
 </html>
