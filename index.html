@@ -1,13 +1,24 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
   <title>Validación de Tickets</title>
 
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script
+    src="https://unpkg.com/html5-qrcode"
+    type="text/javascript">
+  </script>
 
   <style>
+
     body {
       font-family: Arial, sans-serif;
       text-align: center;
@@ -53,27 +64,39 @@
       font-size: 16px;
       font-weight: bold;
     }
+
   </style>
+
 </head>
+
 
 <body>
 
   <h1>Validación de Tickets</h1>
 
-  <button id="btnEscanear">ESCANEAR TICKET</button>
-  <button id="btnDetener">DETENER CÁMARA</button>
+  <button id="btnEscanear">
+    ESCANEAR TICKET
+  </button>
 
-  <div id="estado">Cámara detenida</div>
+  <button id="btnDetener">
+    DETENER CÁMARA
+  </button>
+
+  <div id="estado">
+    Cámara detenida
+  </div>
 
   <div id="reader"></div>
 
+
   <script>
+
     // ============================================================
-    // URL ACTUAL DE APPS SCRIPT — V2.4
+    // URL ACTUAL DE APPS SCRIPT — V2.5
     // ============================================================
 
     const API_URL =
-      "https://script.google.com/macros/s/AKfycbydW5xSz1wXJsYk_RHsYS6XuKEd8IanVIa3-ORcWnPY9lb4vjQlz8qS642SxumFR2CjCQ/exec";
+      "https://script.google.com/macros/s/AKfycbxnwNWIBWh83Pf0_8bLeW8Z5es5DRPqdnLcV3nGtw3oX0DuvnRxp2q16-SGRpdlo4iJjg/exec";
 
 
     // ============================================================
@@ -81,6 +104,7 @@
     // ============================================================
 
     let scanner = null;
+
     let procesando = false;
 
 
@@ -88,16 +112,24 @@
     // ELEMENTOS
     // ============================================================
 
-    const btnEscanear = document.getElementById("btnEscanear");
-    const btnDetener = document.getElementById("btnDetener");
-    const estado = document.getElementById("estado");
+    const btnEscanear =
+      document.getElementById("btnEscanear");
+
+    const btnDetener =
+      document.getElementById("btnDetener");
+
+    const estado =
+      document.getElementById("estado");
 
 
     // ============================================================
     // ESCANEAR
     // ============================================================
 
-    btnEscanear.addEventListener("click", iniciarScanner);
+    btnEscanear.addEventListener(
+      "click",
+      iniciarScanner
+    );
 
 
     async function iniciarScanner() {
@@ -108,42 +140,78 @@
 
       procesando = false;
 
-      estado.textContent = "Activando cámara...";
+      estado.textContent =
+        "Activando cámara...";
+
 
       try {
 
-        // Pedir permiso explícitamente
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: {
-              ideal: "environment"
+        // --------------------------------------------------------
+        // PEDIR PERMISO EXPLÍCITO PARA LA CÁMARA
+        // --------------------------------------------------------
+
+        const stream =
+          await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: {
+                ideal: "environment"
+              }
             }
-          }
-        });
-
-        // Apagar inmediatamente el stream de prueba.
-        // html5-qrcode abrirá posteriormente la cámara.
-        stream.getTracks().forEach(track => track.stop());
+          });
 
 
-        scanner = new Html5Qrcode("reader");
+        // --------------------------------------------------------
+        // CERRAR STREAM DE PRUEBA
+        // html5-qrcode abrirá posteriormente la cámara
+        // --------------------------------------------------------
 
-        const devices = await Html5Qrcode.getCameras();
+        stream
+          .getTracks()
+          .forEach(track => track.stop());
 
-        if (!devices || devices.length === 0) {
-          throw new Error("No se encontró ninguna cámara.");
+
+        // --------------------------------------------------------
+        // CREAR SCANNER
+        // --------------------------------------------------------
+
+        scanner =
+          new Html5Qrcode("reader");
+
+
+        // --------------------------------------------------------
+        // OBTENER CÁMARAS
+        // --------------------------------------------------------
+
+        const devices =
+          await Html5Qrcode.getCameras();
+
+
+        if (
+          !devices ||
+          devices.length === 0
+        ) {
+
+          throw new Error(
+            "No se encontró ninguna cámara."
+          );
+
         }
 
 
-        // ========================================================
+        // --------------------------------------------------------
         // BUSCAR CÁMARA TRASERA
-        // ========================================================
+        // --------------------------------------------------------
 
-        let cameraId = devices[0].id;
+        let cameraId =
+          devices[0].id;
+
 
         for (const device of devices) {
 
-          const label = (device.label || "").toLowerCase();
+          const label =
+            (device.label || "")
+              .toLowerCase();
+
 
           if (
             label.includes("back") ||
@@ -151,30 +219,44 @@
             label.includes("environment") ||
             label.includes("trasera")
           ) {
-            cameraId = device.id;
+
+            cameraId =
+              device.id;
+
             break;
+
           }
+
         }
 
 
-        // ========================================================
+        // --------------------------------------------------------
         // INICIAR LECTOR
-        // ========================================================
+        // --------------------------------------------------------
 
         await scanner.start(
+
           cameraId,
+
           {
             fps: 10,
+
             qrbox: {
               width: 250,
               height: 250
             }
           },
+
           onScanSuccess,
+
           onScanFailure
+
         );
 
-        estado.textContent = "Cámara activa — escanee el ticket";
+
+        estado.textContent =
+          "Cámara activa — escanee el ticket";
+
 
       } catch (error) {
 
@@ -186,6 +268,7 @@
           "No se pudo activar la cámara. Verifique los permisos.";
 
       }
+
     }
 
 
@@ -201,32 +284,50 @@
 
       procesando = true;
 
-      console.log("QR detectado:", decodedText);
+
+      console.log(
+        "QR detectado:",
+        decodedText
+      );
+
+
+      // ----------------------------------------------------------
+      // DETENER CÁMARA ANTES DE ENVIAR
+      // ----------------------------------------------------------
 
       try {
 
-        // Detener cámara antes de enviar la validación
         await detenerScanner();
 
       } catch (error) {
 
-        console.error("Error deteniendo cámara:", error);
+        console.error(
+          "Error deteniendo cámara:",
+          error
+        );
 
       }
 
 
-      // ==========================================================
-      // ENVIAR QR A APPS SCRIPT
-      // ==========================================================
+      // ----------------------------------------------------------
+      // ENVIAR QR A APPS SCRIPT V2.5
+      // ----------------------------------------------------------
 
       const url =
         API_URL +
         "?codigo=" +
         encodeURIComponent(decodedText);
 
-      console.log("Enviando a:", url);
 
-      window.top.location.href = url;
+      console.log(
+        "Enviando a:",
+        url
+      );
+
+
+      window.top.location.href =
+        url;
+
     }
 
 
@@ -235,17 +336,26 @@
     // ============================================================
 
     function onScanFailure(error) {
+
       // No hacer nada.
-      // html5-qrcode intenta nuevamente automáticamente.
+      // html5-qrcode continúa intentando leer.
+
     }
+
+
+    // ============================================================
+    // BOTÓN DETENER CÁMARA
+    // ============================================================
+
+    btnDetener.addEventListener(
+      "click",
+      detenerScanner
+    );
 
 
     // ============================================================
     // DETENER CÁMARA
     // ============================================================
-
-    btnDetener.addEventListener("click", detenerScanner);
-
 
     async function detenerScanner() {
 
@@ -253,15 +363,20 @@
         return;
       }
 
+
       try {
 
         await scanner.stop();
 
       } catch (error) {
 
-        console.error("Error al detener scanner:", error);
+        console.error(
+          "Error al detener scanner:",
+          error
+        );
 
       }
+
 
       try {
 
@@ -269,16 +384,24 @@
 
       } catch (error) {
 
-        console.error("Error limpiando scanner:", error);
+        console.error(
+          "Error limpiando scanner:",
+          error
+        );
 
       }
 
+
       scanner = null;
 
-      estado.textContent = "Cámara detenida";
+
+      estado.textContent =
+        "Cámara detenida";
+
     }
 
   </script>
 
 </body>
+
 </html>
