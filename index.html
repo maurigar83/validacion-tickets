@@ -81,6 +81,50 @@
     let scanner = null;
     let procesando = false;
 
+    let audioContext = null;
+
+    function hacerBeep() {
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        if (audioContext.state === "suspended") {
+          audioContext.resume();
+        }
+
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.type = "sine";
+        oscillator.frequency.value = 880;
+
+        gainNode.gain.setValueAtTime(
+          0.001,
+          audioContext.currentTime
+        );
+
+        gainNode.gain.exponentialRampToValueAtTime(
+          0.25,
+          audioContext.currentTime + 0.01
+        );
+
+        gainNode.gain.exponentialRampToValueAtTime(
+          0.001,
+          audioContext.currentTime + 0.12
+        );
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.12);
+
+      } catch (error) {
+        console.log("No se pudo reproducir el sonido:", error);
+      }
+    }
+
     async function iniciarEscaner() {
       const mensaje = document.getElementById("mensaje");
 
@@ -126,6 +170,9 @@
             if (procesando) return;
 
             procesando = true;
+
+            hacerBeep();
+
             mensaje.innerText = "Ticket detectado. Validando...";
 
             const url =
