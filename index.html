@@ -1,348 +1,1181 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+// =========================================================
 
-  <title>Validación de Tickets</title>
+// CONFIGURACIÓN
 
-  <script src="https://unpkg.com/html5-qrcode"></script>
+// =========================================================
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-      background: #f5f5f5;
+const ID_HOJA = "1zlcizb43ddHuBS8eKsLkG7D0kxS92BZSaLjK0_khdvY";
+
+const NOMBRE_HOJA = "Tickets";
+
+// =========================================================
+
+// VALIDACIÓN DE TICKETS
+
+// =========================================================
+
+function doGet(e) {
+
+  const codigo =
+
+    (e && e.parameter && e.parameter.codigo) || "";
+
+  const scanId =
+
+    (e && e.parameter && e.parameter.scanId) || "";
+
+  if (!codigo) {
+
+    return crearPantalla(
+
+      "info",
+
+      "VALIDACIÓN DE TICKETS",
+
+      "Abre el lector para escanear un código QR.",
+
+      "",
+
+      ""
+
+    );
+
+  }
+
+  const token = String(codigo).trim();
+
+  // =====================================================
+  // CONTROL DE DOBLE PETICIÓN
+  // =====================================================
+  // GitHub genera un scanId único para cada lectura.
+  // Si el navegador repite exactamente la misma petición,
+  // recibimos el mismo scanId y devolvemos el resultado válido.
+  // Una nueva lectura genera otro scanId y, si el ticket ya
+  // ingresó, se muestra "TICKET YA UTILIZADO".
+
+  // El QR nuevo contiene únicamente el Token QR de la columna Q.
+  if (!/^[a-f0-9]{32}$/i.test(token)) {
+    return crearPantalla(
+      "error",
+      "CÓDIGO INVÁLIDO",
+      "El código QR no tiene un token válido.",
+      "",
+      ""
+    );
+  }
+
+  const bloqueo =
+
+    LockService.getScriptLock();
+
+  try {
+
+    bloqueo.waitLock(10000);
+
+    const archivo =
+
+      SpreadsheetApp.openById(ID_HOJA);
+
+    const hoja =
+
+      archivo.getSheetByName(NOMBRE_HOJA);
+
+    if (!hoja) {
+
+      throw new Error(
+
+        'No se encontró la hoja "' +
+
+        NOMBRE_HOJA +
+
+        '".'
+
+      );
+
     }
 
-    h1 {
-      font-size: 26px;
-      margin-bottom: 25px;
+    // Buscar el token exclusivamente en la columna Q.
+    const ultimaFila = hoja.getLastRow();
+    let fila = 0;
+
+    if (ultimaFila >= 2) {
+      const tokens = hoja
+        .getRange(2, 17, ultimaFila - 1, 1)
+        .getDisplayValues();
+
+      for (let i = 0; i < tokens.length; i++) {
+        if (String(tokens[i][0]).trim() === token) {
+          fila = i + 2;
+          break;
+        }
+      }
     }
 
-    button {
-      font-size: 18px;
-      padding: 14px 24px;
-      margin: 8px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
+    if (!fila) {
+      return crearPantalla(
+        "error",
+        "TICKET NO ENCONTRADO",
+        "No pudimos verificar este código.",
+        "",
+        ""
+      );
     }
 
-    #btnStart {
-      background: #198754;
-      color: white;
+    const datos =
+      hoja
+        .getRange(fila, 1, 1, 17)
+        .getValues()[0];
+
+    // Segunda comprobación: el token leído debe coincidir exactamente
+    // con el token almacenado en Q para esa fila.
+    if (String(datos[16]).trim() !== token) {
+      return crearPantalla(
+        "error",
+        "TICKET NO ENCONTRADO",
+        "No pudimos verificar este código.",
+        "",
+        ""
+      );
     }
 
-    #btnStop {
-      background: #dc3545;
-      color: white;
+    const nombre =
+
+      String(datos[2] || "").trim();
+
+    const apellido =
+
+      String(datos[3] || "").trim();
+
+    const tipo =
+
+      String(datos[7] || "").trim();
+
+    const estadoIngreso =
+
+      String(datos[12] || "")
+
+        .trim()
+
+        .toUpperCase()
+
+        .normalize("NFD")
+
+        .replace(/[\u0300-\u036f]/g, "");
+
+    let nombreCompleto =
+
+      [nombre, apellido]
+
+        .filter(Boolean)
+
+        .join(" ");
+
+    if (!nombreCompleto) {
+
+      nombreCompleto = "Sin nombre";
+
     }
 
-    #reader {
-      width: 100%;
-      max-width: 400px;
-      margin: 20px auto;
-      background: white;
-      border-radius: 10px;
-      padding: 10px;
+    if (estadoIngreso === "INGRESO") {
+
+      const fechaIngreso =
+
+        hoja
+
+          .getRange(fila, 14)
+
+          .getDisplayValue();
+
+      const horaIngreso =
+
+        hoja
+
+          .getRange(fila, 15)
+
+          .getDisplayValue();
+
+      // Si esta petición trae el mismo scanId que acaba
+      // de registrar el ingreso, es una repetición de la
+      // misma lectura, no una nueva lectura del QR.
+      if (scanId) {
+
+        const propiedades =
+
+          PropertiesService.getScriptProperties();
+
+        const clave =
+
+          "ULTIMA_LECTURA_QR_" + token;
+
+        const registro =
+
+          propiedades.getProperty(clave);
+
+        if (registro) {
+
+          try {
+
+            const datosLectura =
+
+              JSON.parse(registro);
+
+            const antiguedad =
+
+              Date.now() -
+
+              Number(datosLectura.timestamp || 0);
+
+            if (
+
+              datosLectura.scanId === scanId &&
+
+              antiguedad >= 0 &&
+
+              antiguedad <= 10000
+
+            ) {
+
+              return crearPantalla(
+
+                "valid",
+
+                "TICKET VÁLIDO",
+
+                nombreCompleto,
+
+                tipo,
+
+                "Ingreso registrado: " +
+
+                fechaIngreso +
+
+                " — " +
+
+                horaIngreso
+
+              );
+
+            }
+
+          } catch (error) {
+
+            console.log(
+
+              "No se pudo leer el registro de la última lectura."
+
+            );
+
+          }
+
+        }
+
+      }
+
+      return crearPantalla(
+
+        "used",
+
+        "TICKET YA UTILIZADO",
+
+        nombreCompleto,
+
+        tipo,
+
+        "Ingreso registrado: " +
+
+        fechaIngreso +
+
+        " — " +
+
+        horaIngreso
+
+      );
+
     }
 
-    #mensaje {
-      font-size: 20px;
-      font-weight: bold;
-      margin-top: 20px;
+    if (estadoIngreso !== "NO INGRESO") {
+
+      return crearPantalla(
+
+        "error",
+
+        "ESTADO NO VÁLIDO",
+
+        nombreCompleto,
+
+        tipo,
+
+        "Este ticket no tiene un estado de ingreso válido."
+
+      );
+
     }
-  </style>
-</head>
 
-<body>
+    const ahora =
 
-  <h1>VALIDACIÓN DE TICKETS</h1>
+      new Date();
 
-  <button id="btnStart" onclick="iniciarEscaner()">
-    ESCANEAR TICKET
-  </button>
+    const zonaHoraria =
 
-  <button id="btnStop" onclick="detenerEscaner()">
-    DETENER CÁMARA
-  </button>
+      Session.getScriptTimeZone();
 
-  <div id="reader"></div>
+    const fecha =
 
-  <div id="mensaje">
-    Presiona el botón para activar la cámara.
-  </div>
+      Utilities.formatDate(
 
-  <script>
+        ahora,
 
-    // =====================================================
-    // API V2.2
-    // =====================================================
+        zonaHoraria,
 
-    const API_URL =
-      "https://script.google.com/macros/s/AKfycbwA9i3d70UgR6wMiq_nAqeD_IPAqqV1yTGBmqHBUZbfCfh8W5-3UrKVlay5VRgB6P2rWw/exec";
+        "dd/MM/yyyy"
 
+      );
 
-    // =====================================================
-    // VARIABLES
-    // =====================================================
+    const hora =
 
-    let scanner = null;
-    let procesando = false;
+      Utilities.formatDate(
 
-    let audioContext = null;
+        ahora,
 
+        zonaHoraria,
 
-    // =====================================================
-    // BEEP
-    // =====================================================
+        "HH:mm:ss"
 
-    function hacerBeep() {
+      );
+
+    hoja
+
+      .getRange(fila, 13)
+
+      .setValue("Ingresó");
+
+    hoja
+
+      .getRange(fila, 14)
+
+      .setValue(fecha);
+
+    hoja
+
+      .getRange(fila, 15)
+
+      .setValue(hora);
+
+    SpreadsheetApp.flush();
+
+    // Guardar la identificación de esta lectura.
+    // Se utiliza únicamente para distinguir una repetición
+    // de la misma petición de una nueva lectura del QR.
+    if (scanId) {
+
+      const propiedades =
+
+        PropertiesService.getScriptProperties();
+
+      propiedades.setProperty(
+
+        "ULTIMA_LECTURA_QR_" + token,
+
+        JSON.stringify({
+
+          scanId: scanId,
+
+          timestamp: Date.now()
+
+        })
+
+      );
+
+    }
+
+    return crearPantalla(
+
+      "valid",
+
+      "TICKET VÁLIDO",
+
+      nombreCompleto,
+
+      tipo,
+
+      "Ingreso registrado: " +
+
+      fecha +
+
+      " — " +
+
+      hora
+
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    return crearPantalla(
+
+      "error",
+
+      "NO FUE POSIBLE VALIDAR",
+
+      "Intenta nuevamente en unos segundos.",
+
+      "",
+
+      ""
+
+    );
+
+  } finally {
+
+    try {
+
+      bloqueo.releaseLock();
+
+    } catch (error) {
+
+      console.log(error);
+
+    }
+
+  }
+
+}
+
+// =========================================================
+
+// CREAR PANTALLA DE RESULTADO
+
+// =========================================================
+
+function crearPantalla(
+
+  tipo,
+
+  titulo,
+
+  nombre,
+
+  tipoTicket,
+
+  detalle
+
+) {
+
+  const estilos = {
+
+    valid: {
+
+      color: "#0f7a3f",
+
+      fondo: "#e9f8ef",
+
+      icono: "✓"
+
+    },
+
+    used: {
+
+      color: "#b42318",
+
+      fondo: "#fff0ef",
+
+      icono: "!"
+
+    },
+
+    error: {
+
+      color: "#b42318",
+
+      fondo: "#fff0ef",
+
+      icono: "!"
+
+    },
+
+    info: {
+
+      color: "#1d4ed8",
+
+      fondo: "#eff6ff",
+
+      icono: "i"
+
+    }
+
+  };
+
+  const estado =
+
+    estilos[tipo] ||
+
+    estilos.info;
+
+  const datosTicket = nombre
+
+    ? `
+
+      <div class="datos">
+
+        <div class="nombre">
+
+          ${escaparHtml(nombre)}
+
+        </div>
+
+        ${
+
+          tipoTicket
+
+            ? `
+
+              <div class="tipo">
+
+                ${escaparHtml(tipoTicket)}
+
+              </div>
+
+            `
+
+            : ""
+
+        }
+
+        ${
+
+          detalle
+
+            ? `
+
+              <div class="detalle">
+
+                ${escaparHtml(detalle)}
+
+              </div>
+
+            `
+
+            : ""
+
+        }
+
+      </div>
+
+    `
+
+    : "";
+
+  const html = `
+
+    <!DOCTYPE html>
+
+    <html lang="es">
+
+      <head>
+
+        <meta
+
+          name="viewport"
+
+          content="width=device-width, initial-scale=1"
+
+        >
+
+        <title>
+
+          ${escaparHtml(titulo)}
+
+        </title>
+
+        ${
+
+          tipo !== "info"
+
+            ? `
+
+              <meta
+
+                http-equiv="refresh"
+
+                content="3;url=https://maurigar83.github.io/validacion-tickets/?lector=1"
+
+              >
+
+            `
+
+            : ""
+
+        }
+
+        <style>
+
+          * {
+
+            box-sizing: border-box;
+
+          }
+
+          body {
+
+            margin: 0;
+
+            min-height: 100vh;
+
+            display: grid;
+
+            place-items: center;
+
+            padding: 20px;
+
+            font-family: Arial, sans-serif;
+
+            background: ${estado.fondo};
+
+            color: #172b1d;
+
+          }
+
+          .tarjeta {
+
+            width: min(100%, 620px);
+
+            padding: 44px 32px;
+
+            text-align: center;
+
+            background: #ffffff;
+
+            border-top:
+
+              14px solid ${estado.color};
+
+            border-radius: 24px;
+
+            box-shadow:
+
+              0 12px 35px
+
+              rgba(0, 0, 0, 0.14);
+
+          }
+
+          .icono {
+
+            width: 100px;
+
+            height: 100px;
+
+            margin:
+
+              0 auto 22px;
+
+            display: grid;
+
+            place-items: center;
+
+            border-radius: 50%;
+
+            background: ${estado.color};
+
+            color: white;
+
+            font-size: 64px;
+
+            font-weight: bold;
+
+          }
+
+          h1 {
+
+            margin: 0;
+
+            color: ${estado.color};
+
+            font-size:
+
+              clamp(34px, 9vw, 50px);
+
+            line-height: 1.05;
+
+          }
+
+          .datos {
+
+            margin-top: 32px;
+
+            padding-top: 26px;
+
+            border-top:
+
+              1px solid #e5e7eb;
+
+          }
+
+          .nombre {
+
+            font-size:
+
+              clamp(30px, 8vw, 42px);
+
+            font-weight: bold;
+
+          }
+
+          .tipo {
+
+            display: inline-block;
+
+            margin-top: 14px;
+
+            padding:
+
+              9px 18px;
+
+            border-radius: 999px;
+
+            background: #edf2f7;
+
+            font-size: 20px;
+
+            font-weight: bold;
+
+          }
+
+          .detalle {
+
+            margin-top: 24px;
+
+            color: #4b5563;
+
+            font-size: 28px;
+
+            line-height: 1.5;
+
+          }
+
+          @keyframes disminuir {
+
+            from { width: 100%; }
+
+            to { width: 0%; }
+
+          }
+
+          .volver {
+
+            display: inline-block;
+
+            margin-top: 32px;
+
+            padding:
+
+              17px 26px;
+
+            border: 0;
+
+            border-radius: 12px;
+
+            background: #172b1d;
+
+            color: white;
+
+            font-size: 20px;
+
+            font-weight: bold;
+
+            cursor: pointer;
+
+          }
+
+        </style>
+
+      </head>
+
+      <body>
+
+        <main class="tarjeta">
+
+          <div class="icono">
+
+            ${estado.icono}
+
+          </div>
+
+          <h1>
+
+            ${escaparHtml(titulo)}
+
+          </h1>
+
+          ${datosTicket}
+
+          ${
+
+            tipo !== "info"
+
+              ? `
+
+                <div style="margin-top:24px;color:#6b7280;font-size:16px;">
+
+                  Volviendo al lector en 3 segundos...
+
+                </div>
+
+                <div style="width:100%;height:10px;margin-top:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+
+                  <div style="width:100%;height:100%;background:${estado.color};animation:disminuir 3s linear forwards;"></div>
+
+                </div>
+
+              `
+
+              : ""
+
+          }
+
+          <button
+
+            class="volver"
+
+            onclick="abrirLector()"
+
+          >
+
+            VOLVER AL LECTOR
+
+          </button>
+
+        </main>
+
+        <script>
+
+          function abrirLector() {
+
+            window\.open(
+
+              "https\://maurigar83.github.io/validacion-tickets/?lector=1",
+
+              "_top"
+
+            );
+
+          }
+
+        </script>
+
+      </body>
+
+    </html>
+
+  `;
+
+  return HtmlService
+
+    .createHtmlOutput(html)
+
+    .setTitle(titulo)
+
+    .setXFrameOptionsMode(
+
+      HtmlService.XFrameOptionsMode.ALLOWALL
+
+    );
+
+}
+
+// =========================================================
+
+// ESCAPAR HTML
+
+// =========================================================
+
+function escaparHtml(texto) {
+
+  return String(texto)
+
+    .replace(/&/g, "&amp;")
+
+    .replace(/</g, "&lt;")
+
+    .replace(/>/g, "&gt;")
+
+    .replace(/"/g, "&quot;")
+
+    .replace(/'/g, "&#039;");
+
+}
+
+// =========================================================
+
+// BLOQUEAR EDICIÓN DE DATOS DE VENTA
+
+// =========================================================
+
+function bloquearVentaAlCompletar(e) {
+
+  if (!e || !e.range) {
+
+    return;
+
+  }
+
+  const hoja =
+
+    e.range.getSheet();
+
+  if (hoja.getName() !== "Tickets") {
+
+    return;
+
+  }
+
+  const primeraFila =
+
+    Math.max(2, e.range.getRow());
+
+  const ultimaFila =
+
+    e.range.getRow() +
+
+    e.range.getNumRows() -
+
+    1;
+
+  for (
+
+    let fila = primeraFila;
+
+    fila <= ultimaFila;
+
+    fila++
+
+  ) {
+
+    const datosVenta =
+
+      hoja
+
+        .getRange(fila, 3, 1, 9)
+
+        .getDisplayValues()[0];
+
+    const nombre =
+
+      datosVenta[0].trim();
+
+    const apellido =
+
+      datosVenta[1].trim();
+
+    const cedula =
+
+      datosVenta[2].trim();
+
+    const telefono =
+
+      datosVenta[3].trim();
+
+    const correo =
+
+      datosVenta[4].trim();
+
+    const tipo =
+
+      datosVenta[5]
+
+        .trim()
+
+        .toUpperCase()
+
+        .normalize("NFD")
+
+        .replace(/[\u0300-\u036f]/g, "");
+
+    const referencia =
+
+      datosVenta[7].trim();
+
+    const fechaPago =
+
+      datosVenta[8].trim();
+
+    const datosPersonalesCompletos =
+
+      nombre !== "" &&
+
+      apellido !== "" &&
+
+      cedula !== "" &&
+
+      telefono !== "" &&
+
+      correo !== "";
+
+    if (!datosPersonalesCompletos) {
+
+      continue;
+
+    }
+
+    let ventaCompleta = false;
+
+    if (tipo === "CORTESIA") {
+
+      ventaCompleta = true;
+
+    }
+
+    else if (tipo === "GENERAL") {
+
+      ventaCompleta =
+
+        referencia !== "" &&
+
+        fechaPago !== "";
+
+    }
+
+    else {
+
+      continue;
+
+    }
+
+    if (!ventaCompleta) {
+
+      continue;
+
+    }
+
+    protegerRango(
+
+      hoja,
+
+      hoja.getRange(fila, 3, 1, 5),
+
+      "Venta bloqueada — datos — fila " + fila
+
+    );
+
+    protegerRango(
+
+      hoja,
+
+      hoja.getRange(fila, 10, 1, 2),
+
+      "Venta bloqueada — pago — fila " + fila
+
+    );
+
+  }
+
+}
+
+// =========================================================
+
+// PROTEGER RANGO PARA EL ADMINISTRADOR
+
+// =========================================================
+
+function protegerRango(
+
+  hoja,
+
+  rango,
+
+  descripcion
+
+) {
+
+  const yaProtegido =
+
+    hoja
+
+      .getProtections(
+
+        SpreadsheetApp.ProtectionType.RANGE
+
+      )
+
+      .some(proteccion => {
+
+        const rangoProtegido =
+
+          proteccion.getRange();
+
+        return (
+
+          rangoProtegido.getA1Notation() ===
+
+          rango.getA1Notation()
+
+        );
+
+      });
+
+  if (yaProtegido) {
+
+    return;
+
+  }
+
+  const proteccion =
+
+    rango
+
+      .protect()
+
+      .setDescription(descripcion);
+
+  const administrador =
+
+    Session.getEffectiveUser();
+
+  proteccion.addEditor(administrador);
+
+  if (proteccion.canDomainEdit()) {
+
+    proteccion.setDomainEdit(false);
+
+  }
+
+  const editores =
+
+    proteccion.getEditors();
+
+  const correoAdministrador =
+
+    administrador.getEmail();
+
+  editores.forEach(editor => {
+
+    if (
+
+      editor.getEmail() !==
+
+      correoAdministrador
+
+    ) {
 
       try {
 
-        if (!audioContext) {
-
-          audioContext =
-            new (
-              window.AudioContext ||
-              window.webkitAudioContext
-            )();
-
-        }
-
-        if (
-          audioContext.state ===
-          "suspended"
-        ) {
-
-          audioContext.resume();
-
-        }
-
-        const oscillator =
-          audioContext.createOscillator();
-
-        const gainNode =
-          audioContext.createGain();
-
-        oscillator.type = "sine";
-
-        oscillator.frequency.value = 880;
-
-        gainNode.gain.setValueAtTime(
-          0.001,
-          audioContext.currentTime
-        );
-
-        gainNode.gain.exponentialRampToValueAtTime(
-          0.25,
-          audioContext.currentTime + 0.01
-        );
-
-        gainNode.gain.exponentialRampToValueAtTime(
-          0.001,
-          audioContext.currentTime + 0.12
-        );
-
-        oscillator.connect(gainNode);
-
-        gainNode.connect(
-          audioContext.destination
-        );
-
-        oscillator.start();
-
-        oscillator.stop(
-          audioContext.currentTime + 0.12
-        );
+        proteccion.removeEditor(editor);
 
       } catch (error) {
 
         console.log(
-          "No se pudo reproducir el sonido:",
-          error
-        );
 
-      }
+          "No se pudo retirar editor: " +
 
-    }
-
-
-    // =====================================================
-    // INICIAR ESCÁNER
-    // =====================================================
-
-    async function iniciarEscaner() {
-
-      const mensaje =
-        document.getElementById("mensaje");
-
-      if (procesando) return;
-
-      mensaje.innerText =
-        "Solicitando acceso a la cámara...";
-
-      try {
-
-        const stream =
-          await navigator.mediaDevices.getUserMedia({
-
-            video: {
-              facingMode: {
-                ideal: "environment"
-              }
-            },
-
-            audio: false
-
-          });
-
-
-        stream
-          .getTracks()
-          .forEach(track => track.stop());
-
-
-        mensaje.innerText =
-          "Inicializando cámara...";
-
-
-        scanner =
-          new Html5Qrcode("reader");
-
-
-        const cameras =
-          await Html5Qrcode.getCameras();
-
-
-        if (
-          !cameras ||
-          cameras.length === 0
-        ) {
-
-          throw new Error(
-            "No se encontraron cámaras."
-          );
-
-        }
-
-
-        let cameraId =
-          cameras[0].id;
-
-
-        const camaraTrasera =
-          cameras.find(camera =>
-            /back|rear|environment|trasera/i
-              .test(camera.label)
-          );
-
-
-        if (camaraTrasera) {
-
-          cameraId =
-            camaraTrasera.id;
-
-        }
-
-
-        await scanner.start(
-
-          cameraId,
-
-          {
-            fps: 10,
-
-            qrbox: {
-              width: 250,
-              height: 250
-            }
-          },
-
-
-          codigo => {
-
-            if (procesando) return;
-
-            procesando = true;
-
-
-            // UN SOLO BEEP
-            hacerBeep();
-
-
-            mensaje.innerText =
-              "Ticket detectado. Validando...";
-
-
-            const url =
-              API_URL +
-              "?codigo=" +
-              encodeURIComponent(codigo);
-
-
-            window.top.location.href =
-              url;
-
-          },
-
-
-          errorMessage => {
-
-            // Errores normales
-            // mientras busca un QR.
-
-          }
+          editor.getEmail()
 
         );
 
-
-        mensaje.innerText =
-          "Cámara activa. Escanea el código QR.";
-
-
-      } catch (error) {
-
-        console.error(error);
-
-        mensaje.innerText =
-          "No fue posible activar la cámara.";
-
       }
 
     }
 
+  });
 
-    // =====================================================
-    // DETENER ESCÁNER
-    // =====================================================
-
-    async function detenerEscaner() {
-
-      try {
-
-        if (scanner) {
-
-          await scanner.stop();
-
-          scanner.clear();
-
-          scanner = null;
-
-        }
-
-      } catch (error) {
-
-        console.log(error);
-
-      }
-
-    }
-
-  </script>
-
-</body>
-</html>
+}
