@@ -4,333 +4,664 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Validación de Tickets</title>
+
   <script src="https://unpkg.com/html5-qrcode"></script>
+
   <style>
-    * {
-      box-sizing: border-box;
-    }
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      padding: 16px;
-      margin: 0;
+      padding: 20px;
       background: #f5f5f5;
     }
+
     h1 {
       font-size: 26px;
-      margin: 10px 0 18px;
+      margin-bottom: 25px;
     }
-    .controles {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
+
     button {
-      font-size: 17px;
-      padding: 12px 18px;
+      font-size: 18px;
+      padding: 14px 24px;
+      margin: 8px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      font-weight: 500;
     }
+
     #btnStart {
       background: #198754;
       color: white;
     }
+
     #btnStop {
       background: #dc3545;
       color: white;
     }
-    #btnPanel {
-      display: block;
-      margin: 6px auto 12px;
-      background: #0d6efd;
-      color: white;
-      font-size: 15px;
-      padding: 9px 16px;
-    }
+
     #reader {
       width: 100%;
       max-width: 400px;
-      margin: 10px auto 0;
+      margin: 20px auto;
       background: white;
       border-radius: 10px;
-      padding: 8px;
-      overflow: hidden;
+      padding: 10px;
     }
+
     #mensaje {
-      font-size: 19px;
+      font-size: 20px;
       font-weight: bold;
-      margin: 14px auto 8px;
-      max-width: 400px;
-    }
-    @media (max-width: 600px) {
-      body {
-        padding: 10px;
-      }
-      h1 {
-        font-size: 23px;
-        margin: 6px 0 12px;
-      }
-      .controles {
-        flex-wrap: nowrap;
-        gap: 8px;
-        margin-bottom: 4px;
-      }
-      .controles button {
-        flex: 1;
-        min-width: 0;
-        font-size: 15px;
-        padding: 11px 8px;
-      }
-      #btnPanel {
-        margin: 5px auto 8px;
-        font-size: 14px;
-        padding: 8px 14px;
-      }
-      #mensaje {
-        font-size: 17px;
-        margin: 10px auto 6px;
-      }
-      #reader {
-        margin-top: 6px;
-        padding: 6px;
-        max-width: 390px;
-      }
+      margin-top: 20px;
     }
   </style>
 </head>
+
 <body>
+
   <h1>VALIDACIÓN DE TICKETS</h1>
-  <div class="controles">
-    <button id="btnStart" onclick="iniciarEscaner()">ESCANEAR TICKET</button>
-    <button id="btnStop" onclick="detenerEscaner()">DETENER CÁMARA</button>
-  </div>
-  <button id="btnPanel" onclick="volverAlPanel()">← VOLVER AL PANEL</button>
+
+  <button id="btnStart" onclick="iniciarEscaner()">
+    ESCANEAR TICKET
+  </button>
+
+  <button id="btnStop" onclick="detenerEscaner()">
+    DETENER CÁMARA
+  </button>
+
   <div id="reader"></div>
-  <div id="mensaje">Verificando acceso...</div>
+
+  <div id="mensaje">
+    Verificando acceso...
+  </div>
+
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbwA9i3d70UgR6wMiq_nAqeD_IPAqqV1yTGBmqHBUZbfCfh8W5-3UrKVlay5VRgB6P2rWw/exec";
-    const SEGURIDAD_API_URL = "https://script.google.com/macros/s/AKfycbwITb6P7XOPAZpuRCmrLFitL2eK3-UBujqRuFMDgjUe1-YDXHNWCPUm4x0kUA8d82ZhLw/exec";
-    const LOGIN_URL = "https://maurigar83.github.io/mg-eventos/index.html";
-    const PANEL_URL = "https://maurigar83.github.io/mg-eventos/panel.html";
+
+    const API_URL =
+      "https://script.google.com/macros/s/AKfycbwA9i3d70UgR6wMiq_nAqeD_IPAqqV1yTGBmqHBUZbfCfh8W5-3UrKVlay5VRgB6P2rWw/exec";
+
+    const SEGURIDAD_API_URL =
+      "https://script.google.com/macros/s/AKfycbwITb6P7XOPAZpuRCmrLFitL2eK3-UBujqRuFMDgjUe1-YDXHNWCPUm4x0kUA8d82ZhLw/exec";
+
+    const LOGIN_URL =
+      "https://maurigar83.github.io/mg-eventos/index.html";
+
+    const INTERVALO_REVALIDACION =
+      60 * 60 * 1000;
+
     let scanner = null;
     let procesando = false;
     let audioContext = null;
+    let intervaloRevalidacion = null;
 
-    async function validarAcceso() {
-      const mensaje = document.getElementById("mensaje");
-      const token = sessionStorage.getItem("mg_eventos_token");
-      console.log("TOKEN EN LECTOR:", token);
+
+    function limpiarSesion() {
+
+      sessionStorage.removeItem(
+        "mg_eventos_token"
+      );
+
+      sessionStorage.removeItem(
+        "mg_eventos_usuario"
+      );
+
+      sessionStorage.removeItem(
+        "mg_eventos_nombre"
+      );
+
+      sessionStorage.removeItem(
+        "mg_eventos_rol"
+      );
+
+      sessionStorage.removeItem(
+        "mg_eventos_permisos"
+      );
+
+      sessionStorage.removeItem(
+        "mg_eventos_expira"
+      );
+    }
+
+
+    async function validarAcceso(
+      revalidacion = false
+    ) {
+
+      const mensaje =
+        document.getElementById("mensaje");
+
+      const token =
+        sessionStorage.getItem(
+          "mg_eventos_token"
+        ) || "";
 
       if (!token) {
-        console.log("No existe token en sessionStorage.");
-        window.location.href = LOGIN_URL;
+
+        limpiarSesion();
+
+        window.location.replace(
+          LOGIN_URL
+        );
+
         return false;
       }
 
-      mensaje.innerText = "Verificando acceso...";
+      if (!revalidacion) {
+
+        mensaje.innerText =
+          "Verificando sesión...";
+      }
 
       try {
-        const respuesta = await fetch(SEGURIDAD_API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "text/plain;charset=utf-8"
-          },
-          body: JSON.stringify({
-            accion: "sesion",
-            token: token
-          })
-        });
 
-        if (!respuesta.ok) {
-          throw new Error("No fue posible verificar la sesión.");
-        }
+        const respuesta =
+          await fetch(
+            SEGURIDAD_API_URL,
+            {
+              method: "POST",
 
-        const datos = await respuesta.json();
-        console.log("RESPUESTA SEGURIDAD:", datos);
+              headers: {
+                "Content-Type":
+                  "text/plain;charset=utf-8"
+              },
 
-        if (!datos.ok || !datos.permisos || !datos.permisos.includes("LEER_QR")) {
-          sessionStorage.removeItem("mg_eventos_token");
-          sessionStorage.removeItem("mg_eventos_usuario");
-          sessionStorage.removeItem("mg_eventos_nombre");
-          sessionStorage.removeItem("mg_eventos_rol");
-          sessionStorage.removeItem("mg_eventos_permisos");
-          sessionStorage.removeItem("mg_eventos_expira");
-          window.location.href = LOGIN_URL;
+              body: JSON.stringify({
+                accion: "sesion",
+                token: token
+              })
+            }
+          );
+
+        const datos =
+          await respuesta.json();
+
+        if (
+          !datos.ok ||
+          !datos.permisos ||
+          !datos.permisos.includes(
+            "LEER_QR"
+          )
+        ) {
+
+          await manejarSesionInvalida();
+
           return false;
         }
 
-        sessionStorage.setItem("mg_eventos_usuario", datos.usuario || "");
-        sessionStorage.setItem("mg_eventos_nombre", datos.nombre || "");
-        sessionStorage.setItem("mg_eventos_rol", datos.rol || "");
-        sessionStorage.setItem("mg_eventos_permisos", JSON.stringify(datos.permisos || []));
-        sessionStorage.setItem("mg_eventos_expira", datos.expira || "");
 
-        return true;
-      } catch (error) {
-        console.error("Error validando acceso:", error);
-        mensaje.innerText = "No fue posible verificar el acceso.";
-        return false;
-      }
-    }
+        sessionStorage.setItem(
+          "mg_eventos_usuario",
+          datos.usuario || ""
+        );
 
-    window.addEventListener("load", async function() {
-      const accesoValido = await validarAcceso();
+        sessionStorage.setItem(
+          "mg_eventos_nombre",
+          datos.nombre || ""
+        );
 
-      if (!accesoValido) {
-        return;
-      }
+        sessionStorage.setItem(
+          "mg_eventos_rol",
+          datos.rol || ""
+        );
 
-      const parametros = new URLSearchParams(window.location.search);
+        sessionStorage.setItem(
+          "mg_eventos_permisos",
+          JSON.stringify(
+            datos.permisos || []
+          )
+        );
 
-      if (parametros.get("lector") === "1") {
-        setTimeout(function() {
-          iniciarEscaner();
-        }, 500);
-      } else {
-        document.getElementById("mensaje").innerText = "Acceso autorizado. Presiona el botón para activar la cámara.";
-      }
-    });
+        if (datos.expira) {
 
-    function volverAlPanel() {
-      window.location.href = PANEL_URL;
-    }
-
-    function hacerBeep() {
-      try {
-        if (!audioContext) {
-          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          sessionStorage.setItem(
+            "mg_eventos_expira",
+            datos.expira
+          );
         }
 
-        if (audioContext.state === "suspended") {
+
+        if (!revalidacion) {
+
+          mensaje.innerText =
+            "Acceso autorizado. Preparando lector...";
+        }
+
+        return true;
+
+      } catch (error) {
+
+        console.error(
+          "Error validando sesión:",
+          error
+        );
+
+        if (!revalidacion) {
+
+          mensaje.innerText =
+            "No fue posible verificar la sesión.";
+
+          setTimeout(
+            function() {
+
+              limpiarSesion();
+
+              window.location.replace(
+                LOGIN_URL
+              );
+
+            },
+            1500
+          );
+
+          return false;
+        }
+
+        return true;
+      }
+    }
+
+
+    async function manejarSesionInvalida() {
+
+      try {
+
+        if (scanner) {
+
+          await scanner.stop();
+
+          scanner.clear();
+
+          scanner = null;
+        }
+
+      } catch (error) {
+
+        console.log(
+          "Error deteniendo lector:",
+          error
+        );
+      }
+
+
+      if (intervaloRevalidacion) {
+
+        clearInterval(
+          intervaloRevalidacion
+        );
+
+        intervaloRevalidacion = null;
+      }
+
+
+      limpiarSesion();
+
+      window.location.replace(
+        LOGIN_URL
+      );
+    }
+
+
+    function iniciarRevalidacion() {
+
+      if (intervaloRevalidacion) {
+
+        clearInterval(
+          intervaloRevalidacion
+        );
+      }
+
+      intervaloRevalidacion =
+        setInterval(
+          async function() {
+
+            console.log(
+              "Revalidando sesión..."
+            );
+
+            await validarAcceso(true);
+
+          },
+          INTERVALO_REVALIDACION
+        );
+    }
+
+
+    window.addEventListener(
+      "load",
+      async function() {
+
+        const accesoValido =
+          await validarAcceso();
+
+        if (!accesoValido) {
+          return;
+        }
+
+        iniciarRevalidacion();
+
+
+        const parametros =
+          new URLSearchParams(
+            window.location.search
+          );
+
+
+        if (
+          parametros.get("lector") === "1"
+        ) {
+
+          setTimeout(
+            function() {
+
+              iniciarEscaner();
+
+            },
+            500
+          );
+
+        } else {
+
+          document.getElementById(
+            "mensaje"
+          ).innerText =
+            "Presiona el botón para activar la cámara.";
+        }
+      }
+    );
+
+
+    function hacerBeep() {
+
+      try {
+
+        if (!audioContext) {
+
+          audioContext =
+            new (
+              window.AudioContext ||
+              window.webkitAudioContext
+            )();
+        }
+
+
+        if (
+          audioContext.state ===
+          "suspended"
+        ) {
+
           audioContext.resume();
         }
 
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
 
-        oscillator.type = "sine";
-        oscillator.frequency.value = 880;
+        const oscillator =
+          audioContext.createOscillator();
 
-        gainNode.gain.setValueAtTime(0.001, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.25, audioContext.currentTime + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.12);
+        const gainNode =
+          audioContext.createGain();
 
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+
+        oscillator.type =
+          "sine";
+
+        oscillator.frequency.value =
+          880;
+
+
+        gainNode.gain.setValueAtTime(
+          0.001,
+          audioContext.currentTime
+        );
+
+
+        gainNode.gain.exponentialRampToValueAtTime(
+          0.25,
+          audioContext.currentTime + 0.01
+        );
+
+
+        gainNode.gain.exponentialRampToValueAtTime(
+          0.001,
+          audioContext.currentTime + 0.12
+        );
+
+
+        oscillator.connect(
+          gainNode
+        );
+
+        gainNode.connect(
+          audioContext.destination
+        );
+
 
         oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.12);
+
+        oscillator.stop(
+          audioContext.currentTime + 0.12
+        );
+
       } catch (error) {
-        console.log("No se pudo reproducir el sonido:", error);
+
+        console.log(
+          "No se pudo reproducir el sonido:",
+          error
+        );
       }
     }
 
+
     function generarScanId() {
-      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+
+      if (
+        window.crypto &&
+        typeof window.crypto.randomUUID ===
+          "function"
+      ) {
+
         return window.crypto.randomUUID();
       }
 
-      return Date.now().toString(36) + "-" +
-        Math.random().toString(36).substring(2) + "-" +
-        Math.random().toString(36).substring(2);
+
+      return (
+        Date.now().toString(36) +
+        "-" +
+        Math.random()
+          .toString(36)
+          .substring(2) +
+        "-" +
+        Math.random()
+          .toString(36)
+          .substring(2)
+      );
     }
 
+
     async function iniciarEscaner() {
-      const mensaje = document.getElementById("mensaje");
+
+      const mensaje =
+        document.getElementById(
+          "mensaje"
+        );
+
 
       if (procesando) {
         return;
       }
 
-      mensaje.innerText = "Solicitando acceso a la cámara...";
+
+      mensaje.innerText =
+        "Solicitando acceso a la cámara...";
+
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: {
-              ideal: "environment"
-            }
-          },
-          audio: false
-        });
 
-        stream.getTracks().forEach(track => track.stop());
+        const stream =
+          await navigator.mediaDevices
+            .getUserMedia({
+              video: {
+                facingMode: {
+                  ideal: "environment"
+                }
+              },
+              audio: false
+            });
 
-        mensaje.innerText = "Inicializando cámara...";
 
-        scanner = new Html5Qrcode("reader");
+        stream
+          .getTracks()
+          .forEach(
+            track =>
+              track.stop()
+          );
 
-        const cameras = await Html5Qrcode.getCameras();
 
-        if (!cameras || cameras.length === 0) {
-          throw new Error("No se encontraron cámaras.");
+        mensaje.innerText =
+          "Inicializando cámara...";
+
+
+        scanner =
+          new Html5Qrcode(
+            "reader"
+          );
+
+
+        const cameras =
+          await Html5Qrcode.getCameras();
+
+
+        if (
+          !cameras ||
+          cameras.length === 0
+        ) {
+
+          throw new Error(
+            "No se encontraron cámaras."
+          );
         }
 
-        let cameraId = cameras[0].id;
 
-        const camaraTrasera = cameras.find(camera =>
-          /back|rear|environment|trasera/i.test(camera.label)
-        );
+        let cameraId =
+          cameras[0].id;
+
+
+        const camaraTrasera =
+          cameras.find(
+            camera =>
+              /back|rear|environment|trasera/i.test(
+                camera.label
+              )
+          );
+
 
         if (camaraTrasera) {
-          cameraId = camaraTrasera.id;
+
+          cameraId =
+            camaraTrasera.id;
         }
+
 
         await scanner.start(
           cameraId,
+
           {
             fps: 10,
+
             qrbox: {
               width: 250,
               height: 250
             }
           },
+
+
           codigo => {
+
             if (procesando) {
               return;
             }
 
-            procesando = true;
+
+            procesando =
+              true;
+
+
             hacerBeep();
-            mensaje.innerText = "Ticket detectado. Validando...";
 
-            const scanId = generarScanId();
 
-            const url = API_URL +
+            mensaje.innerText =
+              "Ticket detectado. Validando...";
+
+
+            const scanId =
+              generarScanId();
+
+
+            const url =
+              API_URL +
               "?codigo=" +
-              encodeURIComponent(codigo) +
+              encodeURIComponent(
+                codigo
+              ) +
               "&scanId=" +
-              encodeURIComponent(scanId);
+              encodeURIComponent(
+                scanId
+              );
 
-            window.location.href = url;
+
+            window.location.href =
+              url;
           },
+
+
           errorMessage => {
+
+            // Los errores de búsqueda
+            // son normales mientras escanea.
           }
         );
 
-        mensaje.innerText = "Cámara activa. Escanea el código QR.";
+
+        mensaje.innerText =
+          "Cámara activa. Escanea el código QR.";
+
+
       } catch (error) {
+
         console.error(error);
-        mensaje.innerText = "No fue posible activar la cámara.";
+
+
+        mensaje.innerText =
+          "No fue posible activar la cámara.";
       }
     }
 
+
     async function detenerEscaner() {
+
       try {
+
         if (scanner) {
+
           await scanner.stop();
+
           scanner.clear();
+
           scanner = null;
+
+          procesando = false;
+
+
+          document.getElementById(
+            "mensaje"
+          ).innerText =
+            "Cámara detenida.";
         }
+
       } catch (error) {
+
         console.log(error);
       }
     }
+
   </script>
+
 </body>
 </html>
