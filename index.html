@@ -61,11 +61,6 @@
       color: white;
     }
 
-    #btnPanel {
-      background: #0d6efd;
-      color: white;
-    }
-
     #reader {
       width: 100%;
       max-width: 420px;
@@ -84,6 +79,17 @@
       font-size: clamp(17px, 4.5vw, 20px);
       font-weight: bold;
       line-height: 1.35;
+    }
+
+    #btnPanel {
+      display: block;
+      width: 100%;
+      max-width: 420px;
+      min-height: 52px;
+      margin: 18px auto 0;
+      background: #0d6efd;
+      color: white;
+      font-size: clamp(16px, 4vw, 18px);
     }
 
     @media (max-width: 480px) {
@@ -116,6 +122,12 @@
         max-width: 360px;
         margin-top: 16px;
       }
+
+      #btnPanel {
+        max-width: 360px;
+        min-height: 48px;
+        margin-top: 16px;
+      }
     }
 
     @media (max-width: 360px) {
@@ -130,7 +142,8 @@
 
       .acciones,
       #reader,
-      #mensaje {
+      #mensaje,
+      #btnPanel {
         max-width: 340px;
       }
 
@@ -138,31 +151,27 @@
         min-height: 50px;
         font-size: 17px;
       }
+
+      #btnPanel {
+        min-height: 46px;
+        font-size: 16px;
+      }
     }
   </style>
 </head>
-
 <body>
-
   <h1>VALIDACIÓN DE TICKETS</h1>
 
   <div class="acciones">
-    <button id="btnStart" type="button" onclick="iniciarEscaner()">
-      ESCANEAR TICKET
-    </button>
-
-    <button id="btnStop" type="button" onclick="detenerEscaner()">
-      DETENER CÁMARA
-    </button>
-
-    <button id="btnPanel" type="button" onclick="volverAlPanel()">
-      ← VOLVER AL PANEL
-    </button>
+    <button id="btnStart" type="button" onclick="iniciarEscaner()">ESCANEAR TICKET</button>
+    <button id="btnStop" type="button" onclick="detenerEscaner()">DETENER CÁMARA</button>
   </div>
 
   <div id="reader"></div>
 
   <div id="mensaje">Verificando acceso...</div>
+
+  <button id="btnPanel" type="button" onclick="volverAlPanel()">← VOLVER AL PANEL</button>
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbwA9i3d70UgR6wMiq_nAqeD_IPAqqV1yTGBmqHBUZbfCfh8W5-3UrKVlay5VRgB6P2rWw/exec";
@@ -367,7 +376,6 @@
         stream.getTracks().forEach(track => track.stop());
 
         mensaje.innerText = "Inicializando cámara...";
-
         scanner = new Html5Qrcode("reader");
 
         const cameras = await Html5Qrcode.getCameras();
@@ -402,11 +410,9 @@
 
             procesando = true;
             hacerBeep();
-
             mensaje.innerText = "Ticket detectado. Validando...";
 
             const scanId = generarScanId();
-
             const url = API_URL +
               "?codigo=" + encodeURIComponent(codigo) +
               "&scanId=" + encodeURIComponent(scanId);
@@ -439,6 +445,5 @@
       }
     }
   </script>
-
 </body>
 </html>
