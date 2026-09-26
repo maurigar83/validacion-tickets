@@ -6,23 +6,35 @@
   <title>Validación de Tickets</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      padding: 20px;
+      padding: 16px;
+      margin: 0;
       background: #f5f5f5;
     }
     h1 {
       font-size: 26px;
-      margin-bottom: 25px;
+      margin: 10px 0 18px;
+    }
+    .controles {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
     }
     button {
-      font-size: 18px;
-      padding: 14px 24px;
-      margin: 8px;
+      font-size: 17px;
+      padding: 12px 18px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
+      font-weight: 500;
     }
     #btnStart {
       background: #198754;
@@ -33,28 +45,70 @@
       color: white;
     }
     #btnPanel {
+      display: block;
+      margin: 6px auto 12px;
       background: #0d6efd;
       color: white;
+      font-size: 15px;
+      padding: 9px 16px;
     }
     #reader {
       width: 100%;
       max-width: 400px;
-      margin: 20px auto;
+      margin: 10px auto 0;
       background: white;
       border-radius: 10px;
-      padding: 10px;
+      padding: 8px;
+      overflow: hidden;
     }
     #mensaje {
-      font-size: 20px;
+      font-size: 19px;
       font-weight: bold;
-      margin-top: 20px;
+      margin: 14px auto 8px;
+      max-width: 400px;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+      h1 {
+        font-size: 23px;
+        margin: 6px 0 12px;
+      }
+      .controles {
+        flex-wrap: nowrap;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+      .controles button {
+        flex: 1;
+        min-width: 0;
+        font-size: 15px;
+        padding: 11px 8px;
+      }
+      #btnPanel {
+        margin: 5px auto 8px;
+        font-size: 14px;
+        padding: 8px 14px;
+      }
+      #mensaje {
+        font-size: 17px;
+        margin: 10px auto 6px;
+      }
+      #reader {
+        margin-top: 6px;
+        padding: 6px;
+        max-width: 390px;
+      }
     }
   </style>
 </head>
 <body>
   <h1>VALIDACIÓN DE TICKETS</h1>
-  <button id="btnStart" onclick="iniciarEscaner()">ESCANEAR TICKET</button>
-  <button id="btnStop" onclick="detenerEscaner()">DETENER CÁMARA</button>
+  <div class="controles">
+    <button id="btnStart" onclick="iniciarEscaner()">ESCANEAR TICKET</button>
+    <button id="btnStop" onclick="detenerEscaner()">DETENER CÁMARA</button>
+  </div>
   <button id="btnPanel" onclick="volverAlPanel()">← VOLVER AL PANEL</button>
   <div id="reader"></div>
   <div id="mensaje">Verificando acceso...</div>
