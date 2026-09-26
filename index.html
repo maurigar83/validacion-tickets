@@ -126,9 +126,10 @@
   <button id="btnPanel" type="button" onclick="volverAlPanel()">
     ← VOLVER AL PANEL
   </button>
+  <script src="config.js"></script>
   <script>
-    const API_URL = "const SEGURIDAD_API_URL = "https://script.google.com/macros/s/AKfycbywKo-irDke7cDSj1fIRJQjuc6YKRzj3xqYdmn85sMWHNimuZ48jntvHTpyJFsymZAKdQ/exec";
-    const SEGURIDAD_API_URL = "";
+    const API_URL = CONFIG.BOLETAS_API_URL;
+    const SEGURIDAD_API_URL = CONFIG.SEGURIDAD_API_URL;
     const LOGIN_URL = "https://maurigar83.github.io/mg-eventos/index.html";
     const PANEL_URL = "https://maurigar83.github.io/mg-eventos/panel.html";
     const INTERVALO_REVALIDACION = 60 * 60 * 1000;
