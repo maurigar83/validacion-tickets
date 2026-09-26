@@ -32,6 +32,10 @@
       background: #dc3545;
       color: white;
     }
+    #btnPanel {
+      background: #0d6efd;
+      color: white;
+    }
     #reader {
       width: 100%;
       max-width: 400px;
@@ -51,12 +55,14 @@
   <h1>VALIDACIÓN DE TICKETS</h1>
   <button id="btnStart" onclick="iniciarEscaner()">ESCANEAR TICKET</button>
   <button id="btnStop" onclick="detenerEscaner()">DETENER CÁMARA</button>
+  <button id="btnPanel" onclick="volverAlPanel()">← VOLVER AL PANEL</button>
   <div id="reader"></div>
   <div id="mensaje">Verificando acceso...</div>
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbwA9i3d70UgR6wMiq_nAqeD_IPAqqV1yTGBmqHBUZbfCfh8W5-3UrKVlay5VRgB6P2rWw/exec";
     const SEGURIDAD_API_URL = "https://script.google.com/macros/s/AKfycbwITb6P7XOPAZpuRCmrLFitL2eK3-UBujqRuFMDgjUe1-YDXHNWCPUm4x0kUA8d82ZhLw/exec";
     const LOGIN_URL = "https://maurigar83.github.io/mg-eventos/index.html";
+    const PANEL_URL = "https://maurigar83.github.io/mg-eventos/panel.html";
     let scanner = null;
     let procesando = false;
     let audioContext = null;
@@ -135,6 +141,10 @@
         document.getElementById("mensaje").innerText = "Acceso autorizado. Presiona el botón para activar la cámara.";
       }
     });
+
+    function volverAlPanel() {
+      window.location.href = PANEL_URL;
+    }
 
     function hacerBeep() {
       try {
