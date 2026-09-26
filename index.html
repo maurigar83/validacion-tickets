@@ -72,7 +72,7 @@
   <div id="reader"></div>
 
   <div id="mensaje">
-    Presiona el botón para activar la cámara.
+    Verificando acceso...
   </div>
 
   <script>
@@ -83,6 +83,12 @@
 
     const API_URL =
       "https://script.google.com/macros/s/AKfycbwA9i3d70UgR6wMiq_nAqeD_IPAqqV1yTGBmqHBUZbfCfh8W5-3UrKVlay5VRgB6P2rWw/exec";
+
+    const SEGURIDAD_API_URL =
+      "https://script.google.com/macros/s/AKfycbwITb6P7XOPAZpuRCmrLFitL2eK3-UBujqRuFMDgjUe1-YDXHNWCPUm4x0kUA8d82ZhLw/exec";
+
+    const LOGIN_URL =
+      "https://maurigar83.github.io/mg-eventos/index.html";
 
 
     // =====================================================
@@ -95,23 +101,174 @@
 
 
     // =====================================================
-    // AUTO-INICIO
+    // VALIDAR SESIÓN Y PERMISO
     // =====================================================
 
-    window.addEventListener("load", function() {
+    async function validarAcceso() {
 
-      const parametros =
-        new URLSearchParams(window.location.search);
+      const mensaje =
+        document.getElementById("mensaje");
 
-      if (parametros.get("lector") === "1") {
+      const token =
+        localStorage.getItem("mg_eventos_token");
 
-        setTimeout(function() {
-          iniciarEscaner();
-        }, 500);
+      if (!token) {
 
+        window.location.href = LOGIN_URL;
+
+        return false;
       }
 
-    });
+      mensaje.innerText =
+        "Verificando acceso...";
+
+      try {
+
+        const respuesta =
+          await fetch(
+            SEGURIDAD_API_URL,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "text/plain;charset=utf-8"
+              },
+              body: JSON.stringify({
+                accion: "sesion",
+                token: token
+              })
+            }
+          );
+
+        if (!respuesta.ok) {
+          throw new Error(
+            "No fue posible verificar la sesión."
+          );
+        }
+
+        const datos =
+          await respuesta.json();
+
+        if (
+          !datos.ok ||
+          !datos.permisos ||
+          !datos.permisos.includes("LEER_QR")
+        ) {
+
+          localStorage.removeItem(
+            "mg_eventos_token"
+          );
+
+          localStorage.removeItem(
+            "mg_eventos_usuario"
+          );
+
+          localStorage.removeItem(
+            "mg_eventos_nombre"
+          );
+
+          localStorage.removeItem(
+            "mg_eventos_rol"
+          );
+
+          localStorage.removeItem(
+            "mg_eventos_permisos"
+          );
+
+          localStorage.removeItem(
+            "mg_eventos_expira"
+          );
+
+          window.location.href =
+            LOGIN_URL;
+
+          return false;
+        }
+
+        localStorage.setItem(
+          "mg_eventos_usuario",
+          datos.usuario || ""
+        );
+
+        localStorage.setItem(
+          "mg_eventos_nombre",
+          datos.nombre || ""
+        );
+
+        localStorage.setItem(
+          "mg_eventos_rol",
+          datos.rol || ""
+        );
+
+        localStorage.setItem(
+          "mg_eventos_permisos",
+          JSON.stringify(
+            datos.permisos || []
+          )
+        );
+
+        localStorage.setItem(
+          "mg_eventos_expira",
+          datos.expira || ""
+        );
+
+        return true;
+
+      } catch (error) {
+
+        console.error(
+          "Error validando acceso:",
+          error
+        );
+
+        mensaje.innerText =
+          "No fue posible verificar el acceso.";
+
+        return false;
+      }
+    }
+
+
+    // =====================================================
+    // INICIALIZACIÓN
+    // =====================================================
+
+    window.addEventListener(
+      "load",
+      async function() {
+
+        const accesoValido =
+          await validarAcceso();
+
+        if (!accesoValido) {
+          return;
+        }
+
+        const parametros =
+          new URLSearchParams(
+            window.location.search
+          );
+
+        if (
+          parametros.get("lector") === "1"
+        ) {
+
+          setTimeout(
+            function() {
+              iniciarEscaner();
+            },
+            500
+          );
+
+        } else {
+
+          document.getElementById(
+            "mensaje"
+          ).innerText =
+            "Acceso autorizado. Presiona el botón para activar la cámara.";
+        }
+      }
+    );
 
 
     // =====================================================
@@ -132,7 +289,10 @@
 
         }
 
-        if (audioContext.state === "suspended") {
+        if (
+          audioContext.state === "suspended"
+        ) {
+
           audioContext.resume();
         }
 
@@ -161,7 +321,9 @@
         );
 
         oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        gainNode.connect(
+          audioContext.destination
+        );
 
         oscillator.start();
 
@@ -177,7 +339,6 @@
         );
 
       }
-
     }
 
 
@@ -189,21 +350,24 @@
 
       if (
         window.crypto &&
-        typeof window.crypto.randomUUID === "function"
+        typeof window.crypto.randomUUID ===
+          "function"
       ) {
 
         return window.crypto.randomUUID();
-
       }
 
       return (
         Date.now().toString(36) +
         "-" +
-        Math.random().toString(36).substring(2) +
+        Math.random()
+          .toString(36)
+          .substring(2) +
         "-" +
-        Math.random().toString(36).substring(2)
+        Math.random()
+          .toString(36)
+          .substring(2)
       );
-
     }
 
 
@@ -225,37 +389,33 @@
 
         // Solicitar permiso de cámara
         const stream =
-          await navigator.mediaDevices.getUserMedia({
-
-            video: {
-              facingMode: {
-                ideal: "environment"
-              }
-            },
-
-            audio: false
-
-          });
-
+          await navigator.mediaDevices.getUserMedia(
+            {
+              video: {
+                facingMode: {
+                  ideal: "environment"
+                }
+              },
+              audio: false
+            }
+          );
 
         // Cerramos este acceso inicial.
         // html5-qrcode abrirá la cámara nuevamente.
         stream
           .getTracks()
-          .forEach(track => track.stop());
-
+          .forEach(
+            track => track.stop()
+          );
 
         mensaje.innerText =
           "Inicializando cámara...";
 
-
         scanner =
           new Html5Qrcode("reader");
 
-
         const cameras =
           await Html5Qrcode.getCameras();
-
 
         if (
           !cameras ||
@@ -265,29 +425,24 @@
           throw new Error(
             "No se encontraron cámaras."
           );
-
         }
-
 
         // Buscar cámara trasera
         let cameraId =
           cameras[0].id;
 
-
         const camaraTrasera =
-          cameras.find(camera =>
-            /back|rear|environment|trasera/i
-              .test(camera.label)
+          cameras.find(
+            camera =>
+              /back|rear|environment|trasera/i
+                .test(camera.label)
           );
-
 
         if (camaraTrasera) {
 
           cameraId =
             camaraTrasera.id;
-
         }
-
 
         // Iniciar lector
         await scanner.start(
@@ -302,7 +457,6 @@
               height: 250
             }
           },
-
 
           // =================================================
           // QR DETECTADO
@@ -319,11 +473,9 @@
             mensaje.innerText =
               "Ticket detectado. Validando...";
 
-
             // ID único para esta lectura
             const scanId =
               generarScanId();
-
 
             // Enviar TOKEN QR al Apps Script
             const url =
@@ -333,12 +485,9 @@
               "&scanId=" +
               encodeURIComponent(scanId);
 
-
             // Ir al resultado de validación
             window.location.href = url;
-
           },
-
 
           errorMessage => {
 
@@ -346,13 +495,10 @@
             // son normales mientras escanea.
 
           }
-
         );
-
 
         mensaje.innerText =
           "Cámara activa. Escanea el código QR.";
-
 
       } catch (error) {
 
@@ -360,9 +506,7 @@
 
         mensaje.innerText =
           "No fue posible activar la cámara.";
-
       }
-
     }
 
 
@@ -381,15 +525,12 @@
           scanner.clear();
 
           scanner = null;
-
         }
 
       } catch (error) {
 
         console.log(error);
-
       }
-
     }
 
   </script>
