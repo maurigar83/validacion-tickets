@@ -74,27 +74,70 @@
       font-weight: bold;
       line-height: 1.4;
     }
-    /* RESULTADO DE LA VALIDACIÓN (sin salir de la página) */
+    /* RESULTADO DE LA VALIDACIÓN: pantalla completa, color sólido.
+       Se ve desde lejos en la puerta; se cierra solo o con un toque. */
     #resultado {
-      max-width: 500px;
-      margin: 12px auto 0;
-      padding: 22px 18px;
-      border-radius: 16px;
-      border-top: 10px solid #1d4ed8;
-      background: #ffffff;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      color: #ffffff;
+      background: #1d4ed8;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
     }
     #resultado.oculto { display: none; }
-    #resultado.valido { border-top-color: #0f7a3f; background: #e9f8ef; }
-    #resultado.usado,
-    #resultado.error { border-top-color: #b42318; background: #fff0ef; }
-    #resultadoTitulo { margin: 0; font-size: 30px; line-height: 1.1; }
-    #resultado.valido #resultadoTitulo { color: #0f7a3f; }
-    #resultado.usado #resultadoTitulo,
-    #resultado.error #resultadoTitulo { color: #b42318; }
-    #resultadoNombre { margin-top: 14px; font-size: 26px; font-weight: bold; }
-    #resultadoTipo { margin-top: 8px; font-size: 18px; font-weight: bold; color: #374151; }
-    #resultadoDetalle { margin-top: 10px; font-size: 16px; color: #4b5563; }
+    #resultado.valido { background: #0f7a3f; }
+    #resultado.usado { background: #b42318; }
+    #resultado.error { background: #9a3412; }
+    #resultadoIcono {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: grid;
+      place-items: center;
+      font-size: 72px;
+      font-weight: bold;
+      line-height: 1;
+    }
+    #resultadoTitulo {
+      margin: 22px 0 0;
+      font-size: clamp(34px, 10vw, 56px);
+      line-height: 1.05;
+      font-weight: 800;
+    }
+    #resultadoNombre {
+      margin-top: 26px;
+      font-size: clamp(28px, 8vw, 44px);
+      font-weight: bold;
+      overflow-wrap: anywhere;
+    }
+    #resultadoTipo {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.22);
+      font-size: 20px;
+      font-weight: bold;
+    }
+    #resultadoTipo:empty { display: none; }
+    #resultadoDetalle {
+      margin-top: 16px;
+      font-size: 18px;
+      opacity: 0.92;
+    }
+    #resultadoCerrar {
+      margin-top: 34px;
+      font-size: 15px;
+      opacity: 0.8;
+    }
     @media (max-width: 600px) {
       body {
         padding: 10px;
@@ -141,11 +184,13 @@
     </button>
   </div>
   <div id="reader"></div>
-  <div id="resultado" class="oculto" aria-live="assertive">
+  <div id="resultado" class="oculto" aria-live="assertive" onclick="ocultarResultado()">
+    <div id="resultadoIcono"></div>
     <h2 id="resultadoTitulo"></h2>
     <div id="resultadoNombre"></div>
     <div id="resultadoTipo"></div>
     <div id="resultadoDetalle"></div>
+    <div id="resultadoCerrar">Toca la pantalla para escanear el siguiente</div>
   </div>
   <div id="mensaje">
     Verificando acceso...
@@ -563,23 +608,36 @@
 
     function mostrarResultado(r) {
       const caja = document.getElementById("resultado");
-      const clase =
-        r.estado === "VALIDO" ? "valido" :
-        r.estado === "USADO" ? "usado" : "error";
+      const valido = r.estado === "VALIDO";
+      const clase = valido ? "valido" : (r.estado === "USADO" ? "usado" : "error");
 
       caja.className = clase;
-      document.getElementById("resultadoTitulo").textContent =
-        (r.estado === "VALIDO" ? "✓ " : "✕ ") + (r.titulo || "RESULTADO");
+      document.getElementById("resultadoIcono").textContent = valido ? "✓" : "✕";
+      document.getElementById("resultadoTitulo").textContent = r.titulo || "RESULTADO";
       document.getElementById("resultadoNombre").textContent = r.nombre || "";
       document.getElementById("resultadoTipo").textContent = r.tipo || "";
       document.getElementById("resultadoDetalle").textContent = r.detalle || "";
 
+      // Vibración: corta si es válido, larga y repetida si no.
+      try {
+        if (navigator.vibrate) {
+          navigator.vibrate(valido ? 150 : [300, 120, 300]);
+        }
+      } catch (error) {}
+
       if (temporizadorResultado) {
         clearTimeout(temporizadorResultado);
       }
-      temporizadorResultado = setTimeout(function() {
-        caja.className = "oculto";
-      }, 6000);
+      // Válido se cierra rápido para agilizar la fila; los errores duran más.
+      temporizadorResultado = setTimeout(ocultarResultado, valido ? 2500 : 5000);
+    }
+
+    function ocultarResultado() {
+      if (temporizadorResultado) {
+        clearTimeout(temporizadorResultado);
+        temporizadorResultado = null;
+      }
+      document.getElementById("resultado").className = "oculto";
     }
 
     async function detenerEscaner() {
