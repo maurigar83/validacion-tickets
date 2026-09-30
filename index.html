@@ -395,6 +395,50 @@
       }
     );
 
+    // iPhone (iOS 17+): que el sonido se escuche aunque el interruptor
+    // de silencio esté activado.
+    try {
+      if (navigator.audioSession) {
+        navigator.audioSession.type = "playback";
+      }
+    } catch (error) {}
+
+    function tono(frecuencia, inicio, duracion, forma, volumen) {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const t = audioContext.currentTime + inicio;
+      osc.type = forma;
+      osc.frequency.value = frecuencia;
+      gain.gain.setValueAtTime(0.001, t);
+      gain.gain.exponentialRampToValueAtTime(volumen, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + duracion);
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(t);
+      osc.stop(t + duracion + 0.02);
+    }
+
+    // VÁLIDO: dos tonos agudos ascendentes. NO VÁLIDO: zumbido grave doble.
+    function sonidoResultado(valido) {
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioContext.state === "suspended") {
+          audioContext.resume();
+        }
+        if (valido) {
+          tono(988, 0, 0.12, "sine", 0.35);
+          tono(1319, 0.13, 0.18, "sine", 0.35);
+        } else {
+          tono(180, 0, 0.28, "square", 0.25);
+          tono(180, 0.36, 0.28, "square", 0.25);
+        }
+      } catch (error) {
+        console.log("No se pudo reproducir el sonido:", error);
+      }
+    }
+
     function hacerBeep() {
       try {
         if (!audioContext) {
@@ -618,7 +662,11 @@
       document.getElementById("resultadoTipo").textContent = r.tipo || "";
       document.getElementById("resultadoDetalle").textContent = r.detalle || "";
 
-      // Vibración: corta si es válido, larga y repetida si no.
+      // Sonido distinto según el resultado (funciona en iPhone y Android).
+      sonidoResultado(valido);
+
+      // Vibración: solo Android. Safari en iPhone no permite vibrar
+      // desde una página web.
       try {
         if (navigator.vibrate) {
           navigator.vibrate(valido ? 150 : [300, 120, 300]);
