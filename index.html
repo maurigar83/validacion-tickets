@@ -74,6 +74,27 @@
       font-weight: bold;
       line-height: 1.4;
     }
+    /* RESULTADO DE LA VALIDACIÓN (sin salir de la página) */
+    #resultado {
+      max-width: 500px;
+      margin: 12px auto 0;
+      padding: 22px 18px;
+      border-radius: 16px;
+      border-top: 10px solid #1d4ed8;
+      background: #ffffff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+    #resultado.oculto { display: none; }
+    #resultado.valido { border-top-color: #0f7a3f; background: #e9f8ef; }
+    #resultado.usado,
+    #resultado.error { border-top-color: #b42318; background: #fff0ef; }
+    #resultadoTitulo { margin: 0; font-size: 30px; line-height: 1.1; }
+    #resultado.valido #resultadoTitulo { color: #0f7a3f; }
+    #resultado.usado #resultadoTitulo,
+    #resultado.error #resultadoTitulo { color: #b42318; }
+    #resultadoNombre { margin-top: 14px; font-size: 26px; font-weight: bold; }
+    #resultadoTipo { margin-top: 8px; font-size: 18px; font-weight: bold; color: #374151; }
+    #resultadoDetalle { margin-top: 10px; font-size: 16px; color: #4b5563; }
     @media (max-width: 600px) {
       body {
         padding: 10px;
@@ -120,6 +141,12 @@
     </button>
   </div>
   <div id="reader"></div>
+  <div id="resultado" class="oculto" aria-live="assertive">
+    <h2 id="resultadoTitulo"></h2>
+    <div id="resultadoNombre"></div>
+    <div id="resultadoTipo"></div>
+    <div id="resultadoDetalle"></div>
+  </div>
   <div id="mensaje">
     Verificando acceso...
   </div>
@@ -457,23 +484,18 @@
               return;
             }
 
+            // Evita reprocesar el mismo QR mientras sigue frente a la cámara.
+            if (codigo === ultimoCodigo && Date.now() - ultimoCodigoMs < 4000) {
+              return;
+            }
+
             procesando = true;
+            ultimoCodigo = codigo;
+            ultimoCodigoMs = Date.now();
 
             hacerBeep();
-
-            mensaje.innerText =
-              "Ticket detectado. Validando...";
-
-            const scanId = generarScanId();
-
-            const url =
-              API_URL +
-              "?codigo=" +
-              encodeURIComponent(codigo) +
-              "&scanId=" +
-              encodeURIComponent(scanId);
-
-            window.location.href = url;
+            mensaje.innerText = "Ticket detectado. Validando...";
+            validarCodigo(codigo);
           },
           errorMessage => {
             // Los errores de búsqueda son normales mientras escanea.
@@ -488,6 +510,76 @@
         mensaje.innerText =
           "No fue posible activar la cámara.";
       }
+    }
+
+    let ultimoCodigo = "";
+    let ultimoCodigoMs = 0;
+    let temporizadorResultado = null;
+
+    // Valida el QR con la sesión del lector (acción "validar_qr").
+    // La cámara sigue encendida: no se recarga la página en cada persona.
+    async function validarCodigo(codigo) {
+      const mensaje = document.getElementById("mensaje");
+
+      try {
+        const respuesta = await fetch(SEGURIDAD_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify({
+            accion: "validar_qr",
+            token: sessionStorage.getItem("mg_eventos_token") || "",
+            codigo: codigo,
+            scanId: generarScanId()
+          })
+        });
+
+        const r = await respuesta.json();
+
+        if (r && r.estado === "NO_AUTORIZADO") {
+          await manejarSesionInvalida();
+          return;
+        }
+
+        mostrarResultado(r || {});
+        mensaje.innerText = "Cámara activa. Escanea el siguiente código QR.";
+      } catch (error) {
+        console.error("Error validando el QR:", error);
+        mostrarResultado({
+          estado: "ERROR",
+          titulo: "SIN CONEXIÓN",
+          nombre: "No se pudo validar. Vuelve a escanear.",
+          tipo: "",
+          detalle: ""
+        });
+        ultimoCodigo = "";
+      } finally {
+        setTimeout(function() {
+          procesando = false;
+        }, 1200);
+      }
+    }
+
+    function mostrarResultado(r) {
+      const caja = document.getElementById("resultado");
+      const clase =
+        r.estado === "VALIDO" ? "valido" :
+        r.estado === "USADO" ? "usado" : "error";
+
+      caja.className = clase;
+      document.getElementById("resultadoTitulo").textContent =
+        (r.estado === "VALIDO" ? "✓ " : "✕ ") + (r.titulo || "RESULTADO");
+      document.getElementById("resultadoNombre").textContent = r.nombre || "";
+      document.getElementById("resultadoTipo").textContent = r.tipo || "";
+      document.getElementById("resultadoDetalle").textContent = r.detalle || "";
+
+      if (temporizadorResultado) {
+        clearTimeout(temporizadorResultado);
+      }
+      temporizadorResultado = setTimeout(function() {
+        caja.className = "oculto";
+      }, 6000);
     }
 
     async function detenerEscaner() {
