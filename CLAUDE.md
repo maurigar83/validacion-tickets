@@ -4,10 +4,12 @@ Repo **heredado**. El lector de QR de MG Eventos se movió a
 **https://mgeventos.co/lector** (repo `mg-eventos`, carpeta `lector/`), porque
 la sesión del lector se guarda por dominio y en github.io no veía el token.
 
-Hoy `index.html` solo redirige a `https://mgeventos.co/lector/?lector=1`. Los
-archivos `lector.js`, `lector.css`, `config.js` y `vendor/` quedan como
-historia (pasos 4 y 11 de la auditoría: validar con sesión LEER_QR y librería
-local + CSP estricta).
+Hoy el repo solo tiene `index.html`, que redirige a
+`https://mgeventos.co/lector/?lector=1`. Los archivos viejos del lector
+(`lector.js`, `lector.css`, `config.js` y `vendor/`) se borraron el 24/10/2026
+(auditoría de seguridad, B3): el repo es público y seguían publicados con una
+URL vieja de la API. Quedan en el historial de Git (pasos 4 y 11 de la
+auditoría: validar con sesión LEER_QR y librería local + CSP estricta).
 
 - Los cambios al lector se hacen en `mg-eventos/lector/`, no aquí.
 - El backend es `ticketera-apps-script`; su `CLAUDE.md` tiene el contexto
