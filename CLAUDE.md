@@ -16,6 +16,10 @@ auditoría: validar con sesión LEER_QR y librería local + CSP estricta).
   completo.
 - Pendiente X7 del Plan de auditoría: migrar el lector a `qr-scanner` y
   soportar pistolas Bluetooth (se hace en `mg-eventos/lector/`).
-- Trazabilidad (regla de Mauricio, 23/10/2026): todo cambio se documenta en el
-  `CLAUDE.md` del repo y en el Plan de auditoría (Google Sheet
-  `1YnAFnOSULsJO4Ieg8fyX3opJRYzmvcshfinGDyAgmts`).
+- Trazabilidad: todo cambio se documenta en el `CLAUDE.md` del repo y en el
+  Plan de auditoría (el enlace está en el `CLAUDE.md` de
+  `ticketera-apps-script`).
+- Este repo es **público** (su `CLAUDE.md` y su historial los lee cualquiera):
+  no poner aquí correos personales, ids de hojas o carpetas ni detalles de la
+  operación; van en el `CLAUDE.md` de `ticketera-apps-script`, que es privado.
+  `_config.yml` evita que GitHub Pages publique este archivo.
